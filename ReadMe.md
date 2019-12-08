@@ -4,7 +4,7 @@ Scott is a software able to compute, for **any labelled (edge and node) graph**,
 
 # Table of contents
 
-This repository summary aims to be synthetic and straight to the goal. For more informations about the graph isomorphism problem, algorithm details, please refer to the [repo page]().
+This repository summary aims to be synthetic and straight to the goal. For more informations about the graph isomorphism problem, algorithm details, please refer to the [repo page](https://theplatypus.github.io/scott/).
 
 - [Getting started](#getting-started)
   * [From source code](#from-source-code)
