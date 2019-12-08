@@ -46,7 +46,7 @@ Let G and H be two graphs. They are said to be isomorphics if there exists a bij
 
 <!-- G ≃ H ⟺ ∃ f : V<sub>G</sub> ⟶ V<sub>H</sub>, ∀ (v<sub>1</sub>, v<sub>2</sub>) ∈ E<sub>G</sub>, (f(v<sub>1</sub>), f(v<sub>2</sub>)) ∈ E<sub>H</sub> -->
 
-![wikipedia example](https://raw.githubusercontent.com/theplatypus/test-pages/master/docs/img/isomorphism.png)
+![wikipedia example](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/isomorphism.svg?sanitize=true)
 
 Isomorphism is an equivalence relation, and naturally leads to the definition of *isomorphism class*, a set of graphs sharing an isomorphism with each other, and so all representing the same structure.
 
@@ -78,17 +78,17 @@ We propose here an algorithm based on graph rewriting. Scott execution follows t
  2. Re-writing of cycles without information loss
  3. Canonical encoding of the tree obtained
 
-![Scott example](https://raw.githubusercontent.com/theplatypus/test-pages/master/docs/img/steps.svg?sanitize=true)
+![Scott example](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/steps.svg?sanitize=true)
 
 The root identity can be obvious is the best case (combination of label, degree, degree of neighboorhood-<1:n>, etc.), but in the worst case where there are several candidates, they are computed, the minimal trace obtained being unique for an isomorphism class. 
 
 It can be proved that the following set of three rewritings is sufficient to transform a levelled-graph into a unique tree.
 
-![Rewritings](https://raw.githubusercontent.com/theplatypus/test-pages/master/docs/img/bounds.svg?sanitize=true)
+![Rewritings](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/bounds.svg?sanitize=true)
 
 By applying successive re-writings, aiming to avoid all form of cycle without any loss of information, the graph converges to a tree. Those graphs editions are applied following an order derived on the graph itself, ensuring the tree obtained is a canonical representant of the isomorphism class of the graph.
 
-![Substeps](https://raw.githubusercontent.com/theplatypus/test-pages/master/docs/img/substeps.svg?sanitize=true)
+![Substeps](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/substeps.svg?sanitize=true)
 
 As it is possible to recursively define an order relation on a tree (known property), we can use this canonical tree to obtain some compacts isomorphism-invariants representation of the graph, such as trace (string) or standardized adjacency matrix.
 
