@@ -50,9 +50,9 @@ Let G and H be two graphs. They are said to be isomorphics if there exists a bij
 
 Isomorphism is an equivalence relation, and naturally leads to the definition of *isomorphism class*, a set of graphs sharing an isomorphism with each other, and so all representing the same structure.
 
-While determining (or not) if two graphs are isomophics seems trivial for small graphs, it is actually a problem which remains unresolved in polynomial time in the general case (polynomial heuristics do exist for restricted class of graphs). There is still uncertaincy about this problem theoretical complexity, despite some very recent works [[x](https://arxiv.org/abs/1512.03547)] seem to prove its appartenance to P (Polynomial).
+While determining (or not) if two graphs are isomophics seems trivial for small graphs, it is actually a problem which remains unresolved in polynomial time in the general case (polynomial heuristics do exist for restricted class of graphs). There is still uncertaincy about this problem theoretical complexity, despite some very recent works [[1](https://arxiv.org/abs/1512.03547)] seem to prove its appartenance to P (Polynomial).
 
-There are a lot of practical applications of this problem [[x](https://en.wikipedia.org/wiki/Graph_isomorphism_problem#Applications), [x](https://math.stackexchange.com/a/120482/606995)], as in many graph related problem, we want to consider graphs belonging to the same isomorphism class as equals.
+There are a lot of practical applications of this problem [[2](https://en.wikipedia.org/wiki/Graph_isomorphism_problem#Applications), [3](https://math.stackexchange.com/a/120482/606995)], as in many graph related problem, we want to consider graphs belonging to the same isomorphism class as equals.
 
 ### Graph Canonization
 
@@ -64,7 +64,7 @@ However, once the canonical representant of a graph is computed, it can be store
 
 ### State of Art
 
-Several algorithms already exist, the most used being `nauty`, `bliss`, `traces` for canonization or `conauto`, `saucy` for isomorphism testing. These algorithms are highly efficient, but unfortunately, among algorithms able to give a canonical form, none of them is able to natively deal with labelled edges otherwise than rewriting the graph in an edge-unlabelled way, increasing the problem size. Moreover, those algorithms are sequential, and do not take advantage of multi-threaded hardware.
+Several algorithms already exist, the most used being `nauty` [[4]](https://users.cecs.anu.edu.au/~bdm/nauty/), `bliss` [[5]](http://www.tcs.hut.fi/Software/bliss/), `traces` [[6]](http://pallini.di.uniroma1.it/) for canonization or `conauto` [[7]](https://sites.google.com/site/giconauto/), `saucy` [[8]](http://vlsicad.eecs.umich.edu/BK/SAUCY/) for isomorphism testing. These algorithms are highly efficient, but unfortunately, among algorithms able to give a canonical form, none of them is able to natively deal with labelled edges otherwise than rewriting the graph in an edge-unlabelled way, increasing the problem size. Moreover, those algorithms are sequential, and do not take advantage of multi-threaded hardware.
 
 Another approach is `gspan`, which can handle both edge and vertice labelling, but as it is based on finding a lexicographic minimal description of a graph among the enumeration of them, it is not suitable for whole graphs as long as their size grow, explaining why it is mainly used for (small) subgraphs mining.
 
@@ -372,3 +372,11 @@ Feel free to improve it.
 
 ## References
 
+[[1] : Babai, L. (2016, June). Graph isomorphism in quasipolynomial time. In Proceedings of the forty-eighth annual ACM symposium on Theory of Computing (pp. 684-697). ACM.](https://arxiv.org/abs/1512.03547)
+[[2] : GI on Wikipedia ](https://en.wikipedia.org/wiki/Graph_isomorphism_problem#Applications)
+[[3]: Math Exchange](https://math.stackexchange.com/a/120482/606995)
+[[4]:`nauty`](https://users.cecs.anu.edu.au/~bdm/nauty/)
+[[5]:`bliss`](http://www.tcs.hut.fi/Software/bliss/)
+[[6]:`traces`](http://pallini.di.uniroma1.it/)
+[[7]:`conauto`](https://sites.google.com/site/giconauto/)
+[[8]:`saucy`](http://vlsicad.eecs.umich.edu/BK/SAUCY/)
