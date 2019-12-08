@@ -373,10 +373,17 @@ Feel free to improve it.
 ## References
 
 [[1] : Babai, L. (2016, June). Graph isomorphism in quasipolynomial time. In Proceedings of the forty-eighth annual ACM symposium on Theory of Computing (pp. 684-697). ACM.](https://arxiv.org/abs/1512.03547)
+
 [[2] : GI on Wikipedia ](https://en.wikipedia.org/wiki/Graph_isomorphism_problem#Applications)
+
 [[3]: Math Exchange](https://math.stackexchange.com/a/120482/606995)
+
 [[4]:`nauty`](https://users.cecs.anu.edu.au/~bdm/nauty/)
+
 [[5]:`bliss`](http://www.tcs.hut.fi/Software/bliss/)
+
 [[6]:`traces`](http://pallini.di.uniroma1.it/)
+
 [[7]:`conauto`](https://sites.google.com/site/giconauto/)
+
 [[8]:`saucy`](http://vlsicad.eecs.umich.edu/BK/SAUCY/)
