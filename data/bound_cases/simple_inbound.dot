@@ -1,0 +1,14 @@
+graph simple_inbound {
+	
+	A [label=A] ;
+	B [label=B] ;
+	C [label=C] ;
+	D [label=D] ;
+	E [label=E] ;
+	
+	A -- B ;
+	A -- C ;
+	B -- D ;
+	D -- C ;
+	D -- E ;
+}

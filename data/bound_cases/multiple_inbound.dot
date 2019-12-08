@@ -1,0 +1,17 @@
+graph multiple_inbound {
+	
+	A [label=A] ;
+	B [label=B] ;
+	C [label=C] ;
+	D [label=D] ;
+	E [label=E] ;
+	F [label=F] ;
+	
+	A -- B ;
+	A -- C ;
+	A -- F ;
+	B -- D ;
+	D -- C ;
+	D -- E ;
+	F -- D ;
+}

@@ -1,0 +1,126 @@
+42
+Marvin  02080816422D          
+
+ 14 15  0  0  0  0            999 V2000
+   -0.7145   -0.4125    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.7145    0.4125    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7145   -0.4125    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7145    0.4125    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000   -0.8250    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000    0.8250    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.4992    0.6674    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    1.4992   -0.6675    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    1.9841    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.4289   -0.8250    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0001    1.6500    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0001   -1.6500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.7541    1.4520    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.4289    0.8250    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+ 10  1  2  0  0  0  0
+  1  2  1  0  0  0  0
+ 14  2  1  0  0  0  0
+  8  3  1  0  0  0  0
+  4  3  2  0  0  0  0
+  7  4  1  0  0  0  0
+  1  5  1  0  0  0  0
+  5  3  1  0  0  0  0
+ 12  5  1  0  0  0  0
+  6  2  1  0  0  0  0
+  6  4  1  0  0  0  0
+ 11  6  2  0  0  0  0
+  9  7  1  0  0  0  0
+ 13  7  1  0  0  0  0
+  9  8  2  0  0  0  0
+M  END
+
+> <ID>
+CHEBI:27732
+
+> <NAME>
+caffeine
+
+> <DEFINITION>
+A trimethylxanthine in which the three methyl groups are located at positions 1, 3, and 7. A purine alkaloid that occurs naturally in tea and coffee.
+
+> <STAR>
+3
+
+> <SECONDARY_ID>
+CHEBI:3295; CHEBI:41472; CHEBI:22982
+
+> <SYNONYM>
+theine; Thein; teina; methyltheobromine; mateina; Koffein; guaranine; Coffein; cafeine; cafeina; anhydrous caffeine; 7-methyltheophylline; 3,7-Dihydro-1,3,7-trimethyl-1H-purin-2,6-dion; 1-methyltheobromine; 1,3,7-trimethylxanthine; 1,3,7-Trimethylxanthine; 1,3,7-trimethylpurine-2,6-dione; 1,3,7-trimethyl-2,6-dioxopurine
+
+> <IUPAC_NAME>
+1,3,7-trimethyl-3,7-dihydro-1H-purine-2,6-dione
+
+> <FORMULA>
+C8H10N4O2
+
+> <MASS>
+194.19076
+
+> <MONOISOTOPIC_MASS>
+194.080
+
+> <CHARGE>
+0
+
+> <SMILES>
+Cn1cnc2n(C)c(=O)n(C)c(=O)c12
+
+> <INCHI>
+InChI=1S/C8H10N4O2/c1-10-4-9-6-5(10)7(13)12(3)8(14)11(6)2/h4H,1-3H3
+
+> <INCHIKEY>
+RYYVLZVUVIJVGH-UHFFFAOYSA-N
+
+> <BEILSTEIN_REGISTRY_NUMBER>
+17705
+
+> <CAS_REGISTRY_NUMBER>
+58-08-2
+
+> <GMELIN_REGISTRY_NUMBER>
+103040
+
+> <REAXYS_REGISTRY_NUMBER>
+17705
+
+> <CHEMIDPLUS>
+58-08-2
+
+> <DRUGBANK_ACCESSION>
+DB00201
+
+> <HMDB_ACCESSION>
+HMDB0001847
+
+> <KEGG_COMPOUND_ACCESSION>
+C07481
+
+> <KEGG_DRUG_ACCESSION>
+D00528
+
+> <KNAPSACK_ACCESSION>
+C00001492
+
+> <LINCS_ACCESSION>
+LSM-2026
+
+> <METACYC_ACCESSION>
+1-3-7-TRIMETHYLXANTHINE
+
+> <NIST_CHEMISTRY_WEBBOOK>
+58-08-2
+
+> <PDBECHEM_ACCESSION>
+CFF
+
+> <WIKIPEDIA_ACCESSION>
+Caffeine
+
+> <PUBMED_CITATION>
+10510174; 10796597; 10803761; 10822912; 10884512; 10924888; 10983026; 11014293; 11022879; 11209966; 11312039; 11410911; 11431501; 11815511; 11949272; 12397877; 12457274; 12574990; 12915014; 12943586; 14521986; 14607010; 15257305; 15280431; 15681408; 15718055; 15840517; 16143823; 16391865; 16528931; 16644114; 16709440; 16805851; 16856769; 17132260; 17387608; 17508167; 17724925; 17932622; 17957400; 18068204; 18258404; 18421070; 18625110; 18647558; 19007524; 19047957; 19084078; 19088793; 19418355; 19879252; 20164568; 20470411; 22770225; 7441110; 7689104; 8332255; 8347173; 8679661; 9063686; 9067318; 9132918; 9218278
+
+$$$$

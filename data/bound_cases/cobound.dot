@@ -1,0 +1,12 @@
+graph cobound {
+	
+	A [label=A] ;
+	B [label=B] ;
+	C [label=C] ;
+	D [label=D] ;
+	
+	A -- B ;
+	B -- C ;
+	B -- D ;
+	D -- C ;
+}
