@@ -8,7 +8,7 @@ Written and developed by :
 - Pierre-François MARTEAU **([IRISA Expression](https://www-expression.irisa.fr/fr/))**
 - Emmanuel FRÉNOD **([See-d](https://www.see-d.fr/), [LMBA](http://web.univ-ubs.fr/lmba/))**
 
-![logos](https://raw.githubusercontent.com/theplatypus/test-pages/master/docs/logos/logos.png "Institutions")
+![logos](https://raw.githubusercontent.com/theplatypus/scott/master/docs/logos/logos.png "Institutions")
 
 # Table of contents
 
