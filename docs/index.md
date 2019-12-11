@@ -364,6 +364,10 @@ If you use or fork `scott` in further works, please cite the following :
 }
 ```
 
+You will find the paper edited by [Springer](https://link.springer.com/chapter/10.1007/978-3-030-36687-2_48?fbclid=IwAR34-XjT6i5bGjJu-q5VKs7imqW8OncpF3OghV6iwWJoob0bX-O518-3UUU)
+
+> DOI : `10.1007/978-3-030-36687-2_48`
+
 ## Licence
 
 The Python source code we provide is available on the [GitHub repo](https://github.com/theplatypus/scott), under the MIT public licence. 
@@ -378,12 +382,12 @@ Feel free to improve it.
 
 [[3]: Math Exchange](https://math.stackexchange.com/a/120482/606995)
 
-[[4]:`nauty`](https://users.cecs.anu.edu.au/~bdm/nauty/)
+[[4]:`nauty` ](https://users.cecs.anu.edu.au/~bdm/nauty/)
 
-[[5]:`bliss`](http://www.tcs.hut.fi/Software/bliss/)
+[[5]:`bliss` ](http://www.tcs.hut.fi/Software/bliss/)
 
-[[6]:`traces`](http://pallini.di.uniroma1.it/)
+[[6]:`traces` ](http://pallini.di.uniroma1.it/)
 
-[[7]:`conauto`](https://sites.google.com/site/giconauto/)
+[[7]:`conauto` ](https://sites.google.com/site/giconauto/)
 
-[[8]:`saucy`](http://vlsicad.eecs.umich.edu/BK/SAUCY/)
+[[8]:`saucy` ](http://vlsicad.eecs.umich.edu/BK/SAUCY/)
