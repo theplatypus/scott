@@ -382,12 +382,12 @@ Feel free to improve it.
 
 [[3]: Math Exchange](https://math.stackexchange.com/a/120482/606995)
 
-[[4]:`nauty` ](https://users.cecs.anu.edu.au/~bdm/nauty/)
+[[4]: nauty](https://users.cecs.anu.edu.au/~bdm/nauty/)
 
-[[5]:`bliss` ](http://www.tcs.hut.fi/Software/bliss/)
+[[5]: bliss](http://www.tcs.hut.fi/Software/bliss/)
 
-[[6]:`traces` ](http://pallini.di.uniroma1.it/)
+[[6]: traces](http://pallini.di.uniroma1.it/)
 
-[[7]:`conauto` ](https://sites.google.com/site/giconauto/)
+[[7]: conauto](https://sites.google.com/site/giconauto/)
 
-[[8]:`saucy` ](http://vlsicad.eecs.umich.edu/BK/SAUCY/)
+[[8]: saucy](http://vlsicad.eecs.umich.edu/BK/SAUCY/)
