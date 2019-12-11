@@ -48,7 +48,9 @@ Let G and H be two graphs. They are said to be isomorphics if there exists a bij
 
 ![wikipedia example](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/isomorphism.svg?sanitize=true)
 
-Isomorphism is an equivalence relation, and naturally leads to the definition of *isomorphism class*, a set of graphs sharing an isomorphism with each other, and so all representing the same structure.
+Isomorphism is an equivalence relation, and so partitions the ensemble of graphs into equivalence classes, packing together in a same class all the graphs representing the same structure.
+
+![wikipedia example](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/partitions.svg?sanitize=true)
 
 While determining (or not) if two graphs are isomophics seems trivial for small graphs, it is actually a problem which remains unresolved in polynomial time in the general case (polynomial heuristics do exist for restricted class of graphs). There is still uncertaincy about this problem theoretical complexity, despite some very recent works [[1](https://arxiv.org/abs/1512.03547)] seem to prove its appartenance to P (Polynomial).
 
