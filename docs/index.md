@@ -48,7 +48,7 @@ Let G and H be two graphs. They are said to be isomorphics if there exists a bij
 
 ![wikipedia example](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/isomorphism.svg?sanitize=true)
 
-Isomorphism is an equivalence relation, and so partitions the ensemble of graphs into equivalence classes, packing together in a same class all the graphs representing the same structure.
+Isomorphism is an equivalence relation, and so partitions the ensemble of graphs into equivalence classes, packing together in a same class all the graphs representing the same structure. [How many ?](https://gist.github.com/theplatypus/886ac65e837b8d23ed4d630051888603)
 
 ![wikipedia example](https://raw.githubusercontent.com/theplatypus/scott/master/docs/img/partitions.svg?sanitize=true)
 
