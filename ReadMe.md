@@ -53,7 +53,7 @@ To get `scott` in an environment with additional dependencies installed (chemica
 # Build the image containing all the stuff for a simple standalone install
 docker build -t scott .
 # or pull it
-docker pull <todo>
+docker pull docker.pkg.github.com/theplatypus/scott/scott:latest
 
 # run an interactive shell, where you can import scott in python default interpreter
 docker run --rm -it scott
