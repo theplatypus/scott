@@ -14,7 +14,8 @@ def to_mol_block(smiles: str) -> str:
 			mol = Chem.MolFromSmiles(smiles)
 			mol = Chem.AddHs(mol)
 			return Chem.MolToMolBlock(mol)
-		except expression as identifier:
+		except Exception as error2:
 			print(error)
+			print(error2)
 			print("try to install rdkit/pybel from packages, or use anaconda (see Readme.MD)")
 			return ""
