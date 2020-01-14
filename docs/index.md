@@ -8,6 +8,8 @@ Written and developed by :
 - Pierre-François MARTEAU **([IRISA Expression](https://www-expression.irisa.fr/fr/))**
 - Emmanuel FRÉNOD **([See-d](https://www.see-d.fr/), [LMBA](http://web.univ-ubs.fr/lmba/))**
 
+Full paper is available on [Hal](https://hal.archives-ouvertes.fr/hal-02314658).
+
 ![logos](https://raw.githubusercontent.com/theplatypus/scott/master/docs/logos/logos.png "Institutions")
 
 # Table of contents
@@ -369,6 +371,8 @@ If you use or fork `scott` in further works, please cite the following :
 You will find the paper edited by [Springer](https://link.springer.com/chapter/10.1007/978-3-030-36687-2_48?fbclid=IwAR34-XjT6i5bGjJu-q5VKs7imqW8OncpF3OghV6iwWJoob0bX-O518-3UUU)
 
 > DOI : `10.1007/978-3-030-36687-2_48`
+
+The paper is available on [HAL](https://hal.archives-ouvertes.fr/hal-02314658) as well.
 
 ## Licence
 
