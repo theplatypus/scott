@@ -257,7 +257,7 @@ def Mol_to_Graph(atoms: List[Atom], bonds: List[Bond]) -> Graph :
 	trace("[Mol_to_Graph]")
 	trace(str(atoms))
 	trace(str(bonds))
-	if not atoms or not bonds :
+	if not atoms and not bonds :
 		return None
 	
 	graph = Graph()
