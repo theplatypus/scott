@@ -73,6 +73,8 @@ smile = st.parse.parse_smiles('CCOCOCC=CCONC')
 for id_node in smile.V :
 	print("Node #%s : %s" % (str(id_node), str(smile.V[id_node].label)))
 
+# and with different connex compounds
+smiles = st.parse.parse_smiles('CC.C')
 
 # 1.5 Parse a .dot file
 
@@ -121,6 +123,9 @@ import hashlib
 
 assert hashlib.sha224(simple_canon.encode()).hexdigest() == 'a90f308ea4c2cd8a1003a32507b4769f5ef5f31bb4f2602856200982'
 
+# for multiple connex compounds, better use the scott_trace function, directly giving a string
+smiles = st.parse.parse_smiles('CC.C')
+st.canonize.scott_trace(smiles)
 
 # 2.2 Validity test 
 

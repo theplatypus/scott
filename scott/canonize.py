@@ -108,9 +108,6 @@ def to_canonic_tree(graph: Graph, candidate_rule: str = "$degree", branch_rule: 
 				elected = [id_candidate]
 				max_score = tree.meta['score']
 
-	
-	
-
 	trace("\n")
 	trace(" --- Election winner(s) : " + str(elected) + " with score " + str(max_score), 3)
 
@@ -165,7 +162,7 @@ def to_canonic_tree(graph: Graph, candidate_rule: str = "$degree", branch_rule: 
 def to_cgraph(graph: Graph, candidate_rule: str = "$degree", branch_rule: str = "$depth > tree.parent_modality > $lexic", allow_hashes = True, compress = True, compact = False) -> CGraph : 
 	"""
 		to_cgraph
-		
+		Compress a unique connex compound  to a cgraph
 	"""
 	winner = to_canonic_tree(graph, candidate_rule, branch_rule, allow_hashes, compact)
 
@@ -179,6 +176,19 @@ def to_cgraph(graph: Graph, candidate_rule: str = "$degree", branch_rule: str = 
 	
 	return CGraph(output)
 
+def scott_trace(graph: Graph, delimiter = "|", candidate_rule: str = "$degree", branch_rule: str = "$depth > tree.parent_modality > $lexic", allow_hashes = True, compress = True, compact = False) -> str :
+	"""
+		scott_trace
+		simplest way to get a canonical trace
+		handle multiple connex components
+	""" 
+	components = graph.split_connex_compounds()
+	cgraphs = []
+	for component in components :
+		cgraphs.append(str(to_cgraph(component, candidate_rule, branch_rule, allow_hashes, compress, compact)))
+	
+	return delimiter.join(sorted(cgraphs))
+
 def compress_cgraph(cgraph: str) -> str:
 	"""
 	
@@ -189,7 +199,7 @@ def compress_cgraph(cgraph: str) -> str:
 	in_magnet = False
 	cpt = 0
 	depth = 0
-	 
+	
 	for symbol in cgraph :
 		if not in_magnet :
 			output += symbol

@@ -558,7 +558,7 @@ class Graph :
 		number_connex_compound = self.mark_connex_compounds()
 
 		if number_connex_compound == 1 : 
-			return [self]
+			return [ self ]
 		else :
 			sub_graphs = []
 			for connex_compound_index in range(1, number_connex_compound+1) :
@@ -614,15 +614,15 @@ class Graph :
 
 		def mark_connex_compounds_cb(node_from : Node, node_to : Node, msg: str) :
 			#print(node_to.meta)
-			if not meta_attr in node_to.meta :
+			if not meta_attr in node_to.meta or self.V[id_node].meta[meta_attr] is None :
 				node_to.meta[meta_attr] = msg
 				#print(node_to)
 				self.broadcast(id_node_from = node_to.id, id_origin = node_from.id, msg = msg, callback = mark_connex_compounds_cb)
 				
-		while not all( [ meta_attr in self.V[id_node].meta for id_node in self.V ]):
+		while not all( [ meta_attr in self.V[id_node].meta and self.V[id_node].meta[meta_attr] is not None for id_node in self.V ]):
 			connex_compound_index += 1
 			#print("Compound #%s" % (connex_compound_index))
-			not_connected = [ id_node for id_node in self.V if not meta_attr in self.V[id_node].meta ]
+			not_connected = [ id_node for id_node in self.V if not meta_attr in self.V[id_node].meta or self.V[id_node].meta[meta_attr] is None ]
 			#print("not connected : %s" % (not_connected))
 			#print("node %s := cc #%s" % (not_connected[0], connex_compound_index))
 			self.V[not_connected[0]].meta[meta_attr] = str(connex_compound_index)
