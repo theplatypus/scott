@@ -553,6 +553,24 @@ class Graph :
 		"""
 		return not False in [ 'floor' in self.graph.V[id_node].meta for id_node in self.graph.V.keys() ]
 
+	def split_connex_compounds(self) -> List :
+
+		number_connex_compound = self.mark_connex_compounds()
+
+		if number_connex_compound == 1 : 
+			return [self]
+		else :
+			sub_graphs = []
+			for connex_compound_index in range(1, number_connex_compound+1) :
+				#print(connex_compound_index)
+				sub_graph = self.__copy__()
+				outside_nodes = [ id_node for id_node in sub_graph.V if sub_graph.V[id_node].meta['connex_compounds'] != str(connex_compound_index) ]
+				for id_node in outside_nodes :
+					if sub_graph.V[id_node].meta['connex_compounds'] != str(connex_compound_index):
+						sub_graph.remove_node(id_node)
+				sub_graphs.append(sub_graph)
+			return sub_graphs
+
 	##
 	### NODE FUNCTIONS
 	##
@@ -584,6 +602,35 @@ class Graph :
 			trace("Node #" +id_node + " :\t" + str(score_res), 3)
 
 		return True
+
+	def mark_connex_compounds(self, meta_attr: str = "connex_compounds"):
+
+		# reset 
+		for id_node in self.V :
+			if meta_attr in self.V[id_node].meta :
+				 self.V[id_node].meta[meta_attr] = None
+		
+		connex_compound_index = 0
+
+		def mark_connex_compounds_cb(node_from : Node, node_to : Node, msg: str) :
+			#print(node_to.meta)
+			if not meta_attr in node_to.meta :
+				node_to.meta[meta_attr] = msg
+				#print(node_to)
+				self.broadcast(id_node_from = node_to.id, id_origin = node_from.id, msg = msg, callback = mark_connex_compounds_cb)
+				
+		while not all( [ meta_attr in self.V[id_node].meta for id_node in self.V ]):
+			connex_compound_index += 1
+			#print("Compound #%s" % (connex_compound_index))
+			not_connected = [ id_node for id_node in self.V if not meta_attr in self.V[id_node].meta ]
+			#print("not connected : %s" % (not_connected))
+			#print("node %s := cc #%s" % (not_connected[0], connex_compound_index))
+			self.V[not_connected[0]].meta[meta_attr] = str(connex_compound_index)
+			#print(self.V[not_connected[0]])
+			#print("discovering from %s" % (not_connected[0]))
+			self.broadcast(not_connected[0], None, str(connex_compound_index), mark_connex_compounds_cb)
+
+		return connex_compound_index
 
 	##
 	### MESSAGING FUNCTIONS
