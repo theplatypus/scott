@@ -86,21 +86,28 @@ def extract_ngrams(graph: Graph, id_root: str, window_size: int  = 1, fragment_s
 		extract_ngram
 		==============
 	"""
-	floors = graph.__copy__().group_by_floor(id_root)
+	graph = graph.__copy__()
+	graph.reset_floor()
+	floors = graph.group_by_floor(id_root)
+	floors = { int(k): [ i for i in v ] for k,v in floors.items() }
+	max_level = min(window_size, max(floors))
+	#print("[extract_ngrams] floors : %s" % (floors))
+	#print("window_size = %s ; max_level = %s => max_level = %s" % (window_size, max(floors), max_level))
 	frags = {}
 	ngrams = []
 
-	for floor in range(0, window_size):
-		frags[floor] = {}
+	for floor in range(0, max_level):
 		for id_node in floors[floor]:
-			if (id_node in graph.meta['cgraph_map']):
+			if ('cgraph_map' in graph.meta and id_node in graph.meta['cgraph_map']):
 				cgraph = graph.meta.get('cgraph_map')[id_node]
 			else:
 				subgraph = extract_subgraph(graph, id_node, size = fragment_size)
 				cgraph = to_cgraph(subgraph, candidate_rule = candidate_rule, branch_rule = branch_rule)
 			frags[id_node] = str(cgraph)
-	
-	for floor in range(1, window_size):
+
+	#print("CGraphs mapped to vertices : %s" % (frags))
+
+	for floor in range(1, max_level):
 		for id_node in floors[floor]:
 			paths = graph.enumerate_simple_paths(id_root, id_node)
 			for path in paths :

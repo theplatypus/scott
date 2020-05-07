@@ -317,7 +317,10 @@ class Graph :
 
 		TODO : not efficient
 		"""
-		floors = self.__copy__().group_by_floor(id_src)
+		graph = self.__copy__()
+		graph.reset_floor()
+		floors = graph.group_by_floor(id_src)
+		floors = { int(k): [ i for i in v ] for k,v in floors.items() }
 
 		# reverse the floors struct
 		id_floors = {}
@@ -338,7 +341,7 @@ class Graph :
 				trace(str(id_current) + ' done ! returning ' + str([[ str(id_current) ]]))
 				return [[ str(id_current) ]]
 			else :
-				neighbors = [ entry['to'] for entry in self.R[id_current] ]
+				neighbors = [ entry['to'] for entry in graph.R[id_current] ]
 				neighbors = set(neighbors) - set(to_ignore)
 				# we consider only neighbors of upper floors to avoid loops
 				neighbors = [ n for n in neighbors if id_floors[n] == id_floors[id_current] + 1 ]
