@@ -80,7 +80,7 @@ def extract_subgraph(graph: Graph, id_root: str, size: int  = 1) -> Graph:
 
 	return subgraph
 
-def extract_ngrams(graph: Graph, id_root: str, window_size: int  = 1, fragment_size: int = 1,
+def extract_ngrams(graph: Graph, id_root: str, mode = 'linear', window_size: int  = 1, fragment_size: int = 1,
 	candidate_rule = "$degree", branch_rule = "$depth > tree.parent_modality > $lexic") -> List[List[CGraph]]:
 	"""
 		extract_ngram
@@ -94,7 +94,6 @@ def extract_ngrams(graph: Graph, id_root: str, window_size: int  = 1, fragment_s
 	#print("[extract_ngrams] floors : %s" % (floors))
 	#print("window_size = %s ; max_level = %s => max_level = %s" % (window_size, max(floors), max_level))
 	frags = {}
-	ngrams = []
 
 	for floor in range(0, max_level):
 		for id_node in floors[floor]:
@@ -107,16 +106,23 @@ def extract_ngrams(graph: Graph, id_root: str, window_size: int  = 1, fragment_s
 
 	#print("CGraphs mapped to vertices : %s" % (frags))
 
-	for floor in range(1, max_level):
-		for id_node in floors[floor]:
-			paths = graph.enumerate_simple_paths(id_root, id_node)
-			for path in paths :
-				ngrams.append([ frags[id_node] for id_node in path])
+	if mode == 'linear' :
+		ngrams = []
+		for floor in range(1, max_level):
+			for id_node in floors[floor]:
+				paths = graph.enumerate_simple_paths(id_root, id_node)
+				for path in paths :
+					ngrams.append([ frags[id_node] for id_node in path])
+
+	elif mode == 'radial' :
+		ngrams = {}
+		for floor in range(0, max_level):
+			ngrams[floor] = [ frags[id_node] for id_node in floors[floor]]
 
 	return ngrams
 
 
-def enum_ngrams(graph: Graph, window_size = 2, fragment_size = 1,
+def enum_ngrams(graph: Graph, mode = 'linear', window_size = 2, fragment_size = 1,
 	candidate_rule = "$degree", branch_rule = "$depth > tree.parent_modality > $lexic") -> List[List[CGraph]]:
 
 	# speed-up : pre-compute each cgraph
@@ -125,7 +131,17 @@ def enum_ngrams(graph: Graph, window_size = 2, fragment_size = 1,
 		candidate_rule = candidate_rule, 
 		branch_rule = branch_rule)
 	
-	return [ ngram for ngrams
-		in [ extract_ngrams(graph, id_node, window_size, fragment_size, candidate_rule, branch_rule)
-			for id_node in graph.V ]
-		for ngram in ngrams ]
+	if mode == 'linear':
+		return [ ngram for ngrams
+			in [ extract_ngrams(graph, id_node, mode, window_size, fragment_size, candidate_rule, branch_rule)
+				for id_node in graph.V ]
+			for ngram in ngrams ]
+	elif mode == 'radial' : 
+		return [ 
+			extract_ngrams(graph, id_node, mode, window_size, fragment_size, candidate_rule, branch_rule)
+			for id_node in graph.V 
+		]
+	else : 
+		print("Unkown mode")
+		return None 
+

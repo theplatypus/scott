@@ -70,6 +70,12 @@ print(dico)
 
 # 4.4 Get n-grams from a graph
 
-ngrams = st.fragmentation.enum_ngrams(cafeine, window_size = 2, fragment_size = 1)
-print("NGrams :")
+ngrams = st.fragmentation.enum_ngrams(cafeine, mode = 'linear', window_size = 2, fragment_size = 1)
+print("Linear NGrams :")
+print(ngrams)
+
+# 4.5 Get radial n-grams from a graph
+
+ngrams = st.fragmentation.enum_ngrams(cafeine, mode = 'radial', window_size = 3, fragment_size = 1)
+print("Radial NGrams :")
 print(ngrams)
