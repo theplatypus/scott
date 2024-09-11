@@ -444,7 +444,8 @@ class Graph :
 					 
 
 			#print("PERMUT")
-			permut = flatten(permut)
+			if len(permut) > 0:
+				permut = flatten(permut)
 			#print(permut)
 
 			id_to_score_tup = [ (k, v) for i, (k, v) in enumerate(id_to_score.items())]
