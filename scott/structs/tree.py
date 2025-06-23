@@ -204,49 +204,76 @@ class Tree :
 			return 1 + max([0] + [ child.depth() for (child, modality) in self.children ])
 
 
-	def enumerate_nodes(self, depth_max: int = -1, current_depth: int = 0) -> List[Tuple[Node, int]]:
-		"""
-			enumerate_nodes
-			---------------
-			Return a list of all nodes contained in self.
-				- depth_max : -1 if not important
-		"""
+	def enumerate_nodes_recursive(self, depth_max: int = -1, current_depth: int = 0) -> List[Tuple[Node, int]]:
+		"""Recursive version of ``enumerate_nodes`` kept for benchmarking."""
 		enum = [ (self.root, current_depth) ]
-
 		if not self.is_leaf() and depth_max != 0:
-			depth_max -= 1
-			for (child, modality) in self.children:
-				enum += child.enumerate_nodes(depth_max, current_depth + 1)
-
+		        depth_max -= 1
+		        for (child, modality) in self.children:
+		                enum += child.enumerate_nodes_recursive(depth_max, current_depth + 1)
 		return enum
 
 
-	def score_tree(self, fn: TreeScoring = def_tree_fn()) -> bool:
-		"""
-			score_tree
-			----------
-
-			Score a whole tree following a function
-		"""
-		#if self.root.label == "R" or self.is_leaf():
-			#print("scoring the %s tree (%s) : " % (self.root.id, self.root.label))
-			#print("----------------")
-			#print("tree " + self.root.id + " content : " + str(len(self.enumerate_nodes())) + " elements")
-			#for e in self.enumerate_nodes():
-			#	if self.is_leaf():
-			#		print(self)
-			#	else :
-			#		print(hashlib.md5(str(e).encode('utf-8')).hexdigest())
-		
-		statuses = []
+	def score_tree_recursive(self, fn: TreeScoring = def_tree_fn()) -> bool:
+		"""Recursive version of ``score_tree`` kept for benchmarking."""
 		if self.is_leaf():
-			self.meta['score'] = fn(self)
-			trace("score[ " + str(self) + " ] = " + str(fn(self)), 3)
-			return True
-		else :
-			for (child, modality) in self.children:
-				statuses.append(child.score_tree(fn))
-			self.meta['score'] = fn(self)
-			trace("score[ " + str(self) + " ] = " + str(fn(self)), 3)
-			return not False in statuses
+		        self.meta['score'] = fn(self)
+		        trace("score[ " + str(self) + " ] = " + str(fn(self)), 3)
+		        return True
+		else:
+		        statuses = [child.score_tree_recursive(fn) for (child, modality) in self.children]
+		        self.meta['score'] = fn(self)
+		        trace("score[ " + str(self) + " ] = " + str(fn(self)), 3)
+		        return not False in statuses
+
+	def score_tree(self, fn: TreeScoring = def_tree_fn()) -> bool:
+		"""Iterative version of ``score_tree``."""
+		stack = [(self, False)]
+		while stack:
+		        node, visited = stack.pop()
+		        if not visited:
+		                stack.append((node, True))
+		                if not node.is_leaf():
+		                        for (child, modality) in reversed(node.children):
+		                                stack.append((child, False))
+		        else:
+		                node.meta['score'] = fn(node)
+		return True
+	def enumerate_nodes(self, depth_max: int = -1, current_depth: int = 0) -> List[Tuple[Node, int]]:
+		"""Iterative version of ``enumerate_nodes``."""
+		enum = []
+		stack = [(self, current_depth, depth_max)]
+		while stack:
+		        tree, depth, dmax = stack.pop()
+		        enum.append((tree.root, depth))
+		        if not tree.is_leaf() and dmax != 0:
+		                ndmax = dmax - 1
+		                for (child, modality) in reversed(tree.children):
+		                        stack.append((child, depth + 1, ndmax))
+		return enum
+
+
+def iter_dfs(tree: 'Tree'):
+	"""Iterative DFS traversal yielding ``Tree`` objects."""
+	stack = [tree]
+	while stack:
+		node = stack.pop()
+		yield node
+		if not node.is_leaf():
+			for (child, modality) in reversed(node.children):
+				stack.append(child)
+
+
+def iter_bfs(tree: 'Tree'):
+	"""Iterative BFS traversal yielding ``Tree`` objects."""
+	from collections import deque
+	queue = deque([tree])
+	while queue:
+		node = queue.popleft()
+		yield node
+		if not node.is_leaf():
+		        for (child, modality) in node.children:
+		                queue.append(child)
+
+
 

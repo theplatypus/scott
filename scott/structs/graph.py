@@ -441,7 +441,7 @@ class Graph :
 					#print("We will need to study permutations on %s" % (score_to_id[k]))
 					#permut.append(score_to_id[k])
 					permut.append(list(itertools.combinations(score_to_id[k], 2)))
-					 
+					
 
 			#print("PERMUT")
 			if len(permut) > 0:
@@ -546,9 +546,40 @@ class Graph :
 
 	def is_leaf(self, id_node: str) -> bool:
 		"""
-			is_leaf
+		is_leaf
 		"""
 		return self.degree(id_node) == 1
+
+	def iter_dfs(self, id_root: str):
+		"""
+		Depth-first traversal yielding Node objects
+		"""
+		visited = set()
+		stack = [id_root]
+		while stack:
+			nid = stack.pop()
+			if nid in visited:
+				continue
+			visited.add(nid)
+			yield self.V[nid]
+			for link in reversed(self.R.get(nid, [])):
+				stack.append(link["to"])
+
+	def iter_bfs(self, id_root: str):
+		"""
+		Breadth-first traversal yielding Node objects
+		"""
+		from collections import deque
+		visited = set()
+		queue = deque([id_root])
+		while queue:
+			nid = queue.popleft()
+			if nid in visited:
+				continue
+			visited.add(nid)
+			yield self.V[nid]
+			for link in self.R.get(nid, []):
+				queue.append(link["to"])
 
 	def is_floored(self) -> bool:
 		"""
@@ -612,7 +643,7 @@ class Graph :
 		# reset 
 		for id_node in self.V :
 			if meta_attr in self.V[id_node].meta :
-				 self.V[id_node].meta[meta_attr] = None
+				self.V[id_node].meta[meta_attr] = None
 		
 		connex_compound_index = 0
 
@@ -1003,13 +1034,13 @@ class Graph :
 		"""
 			fix_cobound
 			------------
-							  ( * )
-							 /
+							( * )
+							/
 		--( A )--		--( A )--
-		    |		=>
+		|		=>
 		--( B )--		--( B )--
-							 \
-							  ( * )
+							\
+							( * )
 
 		"""
 		edge = self.E[cobound_edge_id]
@@ -1273,39 +1304,47 @@ class Graph :
 			trace("magnet computed : %s" % (magnet), 3)
 			if allow_hashes : 
 				magnet = "_" + str(hashlib.md5(magnet.encode('utf-8')).hexdigest()) + "_"
-			
-			if "magnet" in self.V[id_node].meta : 
+			if "magnet" in self.V[id_node].meta :
 				self.V[id_node].meta["magnet"][str(self.meta['floored_by'])] = magnet
 			else :
 				self.V[id_node].meta["magnet"] = { str(self.meta['floored_by']) : magnet }
 			return magnet
 
-	def to_tree(self, id_root: str, id_origin: str = None, modality_origin: str = None, ids_ignore: List[str] = []) -> Tree:
-		"""
-			to_tree
-			--------
+	def to_tree_recursive(self, id_root: str, id_origin: str = None, modality_origin: str = None, ids_ignore: List[str] = []) -> Tree:
+               """Recursive version of ``to_tree`` kept for benchmarking."""
+               trace("building a tree rooted on %s (lvl %s), initiated by %s (lvl %s)" % (id_root, str(self.V[id_root].meta.get('floor')), id_origin, str(self.V[id_origin].meta.get('floor')) if id_origin is not None else "none"), 3)
+               if self.is_leaf(id_root) and id_origin is not None:
+                       return Tree(self.V[id_root], None, modality_origin)
+               else:
+                       ids_ignore.append(id_origin)
+                       ids_ignore = list(set(ids_ignore))
+                       children = [ (self.to_tree_recursive(id_root = link["to"], id_origin = id_root,  modality_origin = link["edge"].modality, ids_ignore = ids_ignore), link["edge"].modality)
+                                               for link in self.R[id_root]
+                                               if link["to"] != id_origin and not link["to"] in ids_ignore ]
+                       return Tree(self.V[id_root], children, modality_origin)
 
-			Translates an acyclic subgraph into an "agnostic" (unordered) neuwick tree form
-			A neuwick form is :
-				- node centered (root)
-				- which itself may have a "parent" (origin == "real-root")
-				- this origin is in all cases excluded from the writing
-				- this origin is generally the caller node
-				- a leaf is a tuple (label?, parent_modality_link)
-				- a non-leaf (branch) is a list of others branches/leafs
-		"""
-		#print("Root #" + id_root)
-		#print("Origin :" + str(id_origin))
-		#print("Ignore : " +str(ids_ignore))
-		trace("building a tree rooted on %s (lvl %s), initiated by %s (lvl %s)" % (id_root, str(self.V[id_root].meta.get('floor')), id_origin, str(self.V[id_origin].meta.get('floor')) if id_origin is not None else "none"), 3)
-		if self.is_leaf(id_root) and id_origin is not None:
-			# leaf
-			return Tree(self.V[id_root], None, modality_origin)
-		else :
-			ids_ignore.append(id_origin)
-			ids_ignore = list(set(ids_ignore))
-			children = [ (self.to_tree(id_root = link["to"], id_origin = id_root,  modality_origin = link["edge"].modality, ids_ignore = ids_ignore), link["edge"].modality)
-			 			for link in self.R[id_root]
-			 			if link["to"] != id_origin and not link["to"] in ids_ignore ]
-			#trace("tree rooted on %s, initied by %s ;  #children = %s" % (id_root, id_origin, str(len(children))), 3)
-			return Tree(self.V[id_root], children, modality_origin)
+	def to_tree(self, id_root: str, id_origin: str = None, modality_origin: str = None, ids_ignore: List[str] = []) -> Tree:
+               """Iterative DFS version of ``to_tree``."""
+               stack = [{"id": id_root, "parent": id_origin, "mod": modality_origin, "processed": False, "children": []}]
+               visited = set(ids_ignore)
+               result = None
+               while stack:
+                       frame = stack.pop()
+                       nid = frame["id"]
+                       if not frame["processed"]:
+                               frame["processed"] = True
+                               stack.append(frame)
+                               visited.add(nid)
+                               for link in reversed(self.R.get(nid, [])):
+                                       to = link["to"]
+                                       if to != frame["parent"] and not to in visited:
+                                               stack.append({"id": to, "parent": nid, "mod": link["edge"].modality, "processed": False, "children": []})
+                       else:
+                               children = frame["children"] if frame["children"] else None
+                               node_tree = Tree(self.V[nid], children, frame["mod"])
+                               if stack:
+                                       stack[-1]["children"].append((node_tree, frame["mod"]))
+                               else:
+                                       result = node_tree
+               return result
+
