@@ -90,6 +90,40 @@ impl GraphWrap {
 		self.graph.add_edge(from_index, to_index, edge)
 	}
 
+	pub fn add_node_with_meta(&mut self, id: &str, label: &str, meta: NodeMeta) -> NodeIndex {
+		if let Some(index) = self.id_to_index.get(id) {
+			return *index;
+		}
+		let node = NodeData {
+			id: id.to_string(),
+			label: label.to_string(),
+			meta,
+			data: HashMap::new(),
+		};
+		let index = self.graph.add_node(node);
+		self.id_to_index.insert(id.to_string(), index);
+		index
+	}
+
+	pub fn add_edge_custom(&mut self, from: NodeIndex, to: NodeIndex, mut edge: EdgeData) -> EdgeIndex {
+		if edge.id.is_empty() {
+			self.edge_count += 1;
+			edge.id = format!("e{}", self.edge_count);
+		} else {
+			self.edge_count += 1;
+		}
+		self.graph.add_edge(from, to, edge)
+	}
+
+	pub fn remove_node(&mut self, id: &str) -> bool {
+		let index = match self.id_to_index.remove(id) {
+			Some(index) => index,
+			None => return false,
+		};
+		self.graph.remove_node(index);
+		true
+	}
+
 	pub fn node_index(&self, id: &str) -> Option<NodeIndex> {
 		self.id_to_index.get(id).copied()
 	}
