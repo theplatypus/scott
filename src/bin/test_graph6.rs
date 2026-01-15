@@ -4,10 +4,10 @@ use petgraph::graph::UnGraph;
 use petgraph::graph6::from_graph6_representation;
 
 use scott::canonize::to_cgraph;
-use scott::graph::GraphWrap;
+use scott::graph::Graph;
 
-fn build_scott_graph(n: usize, edges: &[(NodeIndex, NodeIndex)]) -> GraphWrap {
-    let mut graph = GraphWrap::new();
+fn build_scott_graph(n: usize, edges: &[(NodeIndex, NodeIndex)]) -> Graph {
+    let mut graph = Graph::new();
     for i in 0..n {
         let id = (i + 1).to_string();
         graph.ensure_node(&id, ".");
@@ -15,7 +15,7 @@ fn build_scott_graph(n: usize, edges: &[(NodeIndex, NodeIndex)]) -> GraphWrap {
     for (u, v) in edges {
         let u_id = (u.index() + 1).to_string();
         let v_id = (v.index() + 1).to_string();
-        graph.add_edge(&u_id, &v_id);
+        graph.add_edge_with_modality(&u_id, &v_id, "1");
     }
     graph
 }
@@ -51,8 +51,10 @@ fn main() {
 
     let scott_a = build_scott_graph(n, &edges);
     let scott_b = build_scott_graph(n2, &edges2);
-    let canon_a = to_cgraph(&scott_a, "$degree", "$depth > tree.parent_modality > $lexic", true, true, false);
-    let canon_b = to_cgraph(&scott_b, "$degree", "$depth > tree.parent_modality > $lexic", true, true, false);
+    let canon_a = to_cgraph(&scott_a, "$degree", "$depth > tree.parent_modality > $lexic", true, true, false)
+        .expect("failed to canonize A");
+    let canon_b = to_cgraph(&scott_b, "$degree", "$depth > tree.parent_modality > $lexic", true, true, false)
+        .expect("failed to canonize B");
     println!("canon equal (same graph6): {}", canon_a == canon_b);
 
     let (n3, edges3) = from_graph6_representation::<NodeIndex>("FSOT_".to_string());
@@ -68,7 +70,8 @@ fn main() {
     println!("isomorphic (different graph6): {}", iso2);
 
     let scott_c = build_scott_graph(n3, &edges3);
-    let canon_c = to_cgraph(&scott_c, "$degree", "$depth > tree.parent_modality > $lexic", true, true, false);
+    let canon_c = to_cgraph(&scott_c, "$degree", "$depth > tree.parent_modality > $lexic", true, true, false)
+        .expect("failed to canonize C");
     println!("canon equal (different graph6): {}", canon_a == canon_c);
     println!("canon: {}", canon_c);
 }
