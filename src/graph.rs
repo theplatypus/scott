@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use petgraph::graph::{EdgeIndex, NodeIndex, UnGraph};
 use std::collections::{HashSet, VecDeque};
 
+use crate::error::{ScottError, ScottResult};
+
 #[derive(Debug, Clone, Default)]
 pub struct NodeMeta {
 	pub is_mirror: bool,
@@ -257,5 +259,50 @@ impl GraphWrap {
 		let mut graph = self.clone();
 		graph.compute_floors(root_id, ids_ignore)?;
 		Ok(graph)
+	}
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Graph {
+	inner: GraphWrap,
+}
+
+impl Graph {
+	pub fn new() -> Self {
+		Self {
+			inner: GraphWrap::new(),
+		}
+	}
+
+	pub fn from_wrap(inner: GraphWrap) -> Self {
+		Self { inner }
+	}
+
+	pub fn as_wrap(&self) -> &GraphWrap {
+		&self.inner
+	}
+
+	pub fn as_wrap_mut(&mut self) -> &mut GraphWrap {
+		&mut self.inner
+	}
+
+	pub fn ensure_node(&mut self, id: &str, label: &str) -> NodeIndex {
+		self.inner.ensure_node(id, label)
+	}
+
+	pub fn add_edge_with_modality(&mut self, from: &str, to: &str, modality: &str) -> EdgeIndex {
+		self.inner.add_edge_with_modality(from, to, modality)
+	}
+
+	pub fn to_dag_skeleton(
+		&self,
+		root_id: &str,
+		ids_ignore: &HashSet<String>,
+	) -> ScottResult<Graph> {
+		let graph = self
+			.inner
+			.to_dag_skeleton(root_id, ids_ignore)
+			.map_err(ScottError::Parse)?;
+		Ok(Graph::from_wrap(graph))
 	}
 }
