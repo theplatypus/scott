@@ -2,6 +2,19 @@ use std::fs;
 
 use crate::graph::GraphWrap;
 
+fn strip_quotes(input: &str) -> &str {
+	let trimmed = input.trim();
+	if trimmed.len() >= 2 {
+		let bytes = trimmed.as_bytes();
+		if (bytes[0] == b'"' && bytes[trimmed.len() - 1] == b'"')
+			|| (bytes[0] == b'\'' && bytes[trimmed.len() - 1] == b'\'')
+		{
+			return &trimmed[1..trimmed.len() - 1];
+		}
+	}
+	trimmed
+}
+
 fn strip_trailing_semicolon(input: &str) -> &str {
 	let trimmed = input.trim();
 	trimmed.strip_suffix(';').unwrap_or(trimmed).trim()
@@ -23,6 +36,28 @@ fn parse_node_id(input: &str) -> Result<String, String> {
 	Ok(id.to_string())
 }
 
+fn parse_attrs(line: &str) -> std::collections::HashMap<String, String> {
+	let mut attrs = std::collections::HashMap::new();
+	let open = match line.find('[') {
+		Some(pos) => pos,
+		None => return attrs,
+	};
+	let close = match line[open + 1..].find(']') {
+		Some(pos) => open + 1 + pos,
+		None => return attrs,
+	};
+	let body = &line[open + 1..close];
+	for entry in body.split(',') {
+		let mut parts = entry.splitn(2, '=');
+		let key = parts.next().unwrap_or("").trim();
+		let value = parts.next().unwrap_or("").trim();
+		if !key.is_empty() {
+			attrs.insert(key.to_string(), strip_quotes(value).to_string());
+		}
+	}
+	attrs
+}
+
 pub fn parse_dot_file(path: &str) -> Result<GraphWrap, String> {
 	let content = fs::read_to_string(path).map_err(|err| err.to_string())?;
 	let mut graph = GraphWrap::new();
@@ -37,6 +72,8 @@ pub fn parse_dot_file(path: &str) -> Result<GraphWrap, String> {
 			continue;
 		}
 
+		let attrs = parse_attrs(line);
+
 		if line.contains("--") {
 			let mut parts = line.splitn(2, "--");
 			let left = parts.next().unwrap_or("");
@@ -46,14 +83,16 @@ pub fn parse_dot_file(path: &str) -> Result<GraphWrap, String> {
 			let right_clean = strip_trailing_semicolon(right);
 			let right_id = parse_node_id(right_clean)
 				.map_err(|err| format!("line {}: {}", line_no + 1, err))?;
-			graph.add_edge(&left_id, &right_id);
+			let weight = attrs.get("weight").map(|val| val.as_str()).unwrap_or("1");
+			graph.add_edge_with_modality(&left_id, &right_id, weight);
 			continue;
 		}
 
 		if line.contains('[') {
 			let id = parse_node_id(line)
 				.map_err(|err| format!("line {}: {}", line_no + 1, err))?;
-			graph.ensure_node(&id, ".");
+			let label = attrs.get("label").map(|val| val.as_str()).unwrap_or(".");
+			graph.ensure_node(&id, label);
 		}
 	}
 
