@@ -86,4 +86,112 @@ impl GraphWrap {
 		};
 		self.graph.add_edge(from_index, to_index, edge)
 	}
+
+	pub fn node_index(&self, id: &str) -> Option<NodeIndex> {
+		self.id_to_index.get(id).copied()
+	}
+
+	pub fn node_data(&self, id: &str) -> Option<&NodeData> {
+		self.node_index(id).and_then(|index| self.graph.node_weight(index))
+	}
+
+	pub fn node_data_mut(&mut self, id: &str) -> Option<&mut NodeData> {
+		self.node_index(id).and_then(|index| self.graph.node_weight_mut(index))
+	}
+
+	pub fn node_meta(&self, id: &str) -> Option<&NodeMeta> {
+		self.node_data(id).map(|node| &node.meta)
+	}
+
+	pub fn node_meta_mut(&mut self, id: &str) -> Option<&mut NodeMeta> {
+		self.node_data_mut(id).map(|node| &mut node.meta)
+	}
+
+	pub fn edge_data(&self, index: EdgeIndex) -> Option<&EdgeData> {
+		self.graph.edge_weight(index)
+	}
+
+	pub fn edge_data_mut(&mut self, index: EdgeIndex) -> Option<&mut EdgeData> {
+		self.graph.edge_weight_mut(index)
+	}
+
+	pub fn set_node_floor(&mut self, id: &str, floor: i32) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.floor = Some(floor);
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn set_node_magnet(&mut self, id: &str, magnet: &str) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.magnet = Some(magnet.to_string());
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn set_node_candidate_score(&mut self, id: &str, score: Vec<String>) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.candidate_score = Some(score);
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn set_node_master(&mut self, id: &str, master: &str) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.master = Some(master.to_string());
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn clear_node_master(&mut self, id: &str) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.master = None;
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn add_node_master_attempt(&mut self, id: &str, master: &str) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.master_attempts.push(master.to_string());
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn set_node_virtual(&mut self, id: &str, is_virtual: bool) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.is_virtual = is_virtual;
+				true
+			}
+			None => false,
+		}
+	}
+
+	pub fn set_node_mirror(&mut self, id: &str, is_mirror: bool) -> bool {
+		match self.node_meta_mut(id) {
+			Some(meta) => {
+				meta.is_mirror = is_mirror;
+				true
+			}
+			None => false,
+		}
+	}
 }
