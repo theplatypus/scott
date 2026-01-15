@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use petgraph::graph::{EdgeIndex, NodeIndex, UnGraph};
+use std::collections::{HashSet, VecDeque};
 
 #[derive(Debug, Clone, Default)]
 pub struct NodeMeta {
@@ -193,5 +194,68 @@ impl GraphWrap {
 			}
 			None => false,
 		}
+	}
+
+	pub fn reset_floors(&mut self) {
+		for node_index in self.graph.node_indices() {
+			if let Some(node) = self.graph.node_weight_mut(node_index) {
+				node.meta.floor = None;
+			}
+		}
+	}
+
+	pub fn compute_floors(
+		&mut self,
+		root_id: &str,
+		ids_ignore: &HashSet<String>,
+	) -> Result<HashMap<i32, Vec<NodeIndex>>, String> {
+		let root_index = self
+			.node_index(root_id)
+			.ok_or_else(|| format!("unknown root id '{}'", root_id))?;
+		if ids_ignore.contains(root_id) {
+			return Err("root id is ignored".to_string());
+		}
+
+		self.reset_floors();
+		let mut floors: HashMap<i32, Vec<NodeIndex>> = HashMap::new();
+		let mut queue: VecDeque<(NodeIndex, i32)> = VecDeque::new();
+		queue.push_back((root_index, 0));
+
+		let mut seen: HashSet<NodeIndex> = HashSet::new();
+		seen.insert(root_index);
+
+		while let Some((node_index, depth)) = queue.pop_front() {
+			if let Some(node) = self.graph.node_weight_mut(node_index) {
+				node.meta.floor = Some(depth);
+			}
+			floors.entry(depth).or_default().push(node_index);
+
+			for neighbor in self.graph.neighbors(node_index) {
+				if seen.contains(&neighbor) {
+					continue;
+				}
+				let neighbor_id = match self.graph.node_weight(neighbor) {
+					Some(node) => node.id.as_str(),
+					None => continue,
+				};
+				if ids_ignore.contains(neighbor_id) {
+					continue;
+				}
+				seen.insert(neighbor);
+				queue.push_back((neighbor, depth + 1));
+			}
+		}
+
+		Ok(floors)
+	}
+
+	pub fn to_dag_skeleton(
+		&self,
+		root_id: &str,
+		ids_ignore: &HashSet<String>,
+	) -> Result<GraphWrap, String> {
+		let mut graph = self.clone();
+		graph.compute_floors(root_id, ids_ignore)?;
+		Ok(graph)
 	}
 }
