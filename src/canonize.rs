@@ -171,9 +171,17 @@ fn prune_graph(graph: &mut GraphWrap, candidates: &[String]) -> HashSet<String> 
 							should_broadcast = true;
 						}
 						None => {
-							meta.master = Some(msg.clone());
-							meta.master_attempts.push(msg.clone());
-							should_broadcast = true;
+							if !meta.master_attempts.is_empty() {
+								if meta.master_attempts.iter().any(|m| m == &msg) {
+									continue;
+								}
+								meta.master_attempts.push(msg.clone());
+								should_broadcast = true;
+							} else {
+								meta.master = Some(msg.clone());
+								meta.master_attempts.push(msg.clone());
+								should_broadcast = true;
+							}
 						}
 					}
 				}
@@ -188,12 +196,9 @@ fn prune_graph(graph: &mut GraphWrap, candidates: &[String]) -> HashSet<String> 
 	let mut unmastered = HashSet::new();
 	for node_index in graph.graph.node_indices() {
 		let node = &graph.graph[node_index];
-		if node.meta.master.is_none() {
+		if node.meta.master.is_none() && !node.meta.master_attempts.is_empty() {
 			unmastered.insert(node.id.clone());
 		}
-	}
-	for id in candidates {
-		unmastered.insert(id.clone());
 	}
 	unmastered
 }

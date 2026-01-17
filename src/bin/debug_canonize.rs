@@ -12,6 +12,7 @@ fn main() {
 		std::process::exit(1);
 	}
 	let path = &args[1];
+	emit("input", vec![("dot", Value::String(path.clone()))]);
 	let graph = from_dot(path).expect("failed to parse dot");
 	let mut graph_wrap = graph.as_wrap().clone();
 
@@ -21,15 +22,19 @@ fn main() {
 	emit("selected_candidates", vec![("candidates", vec_string(&candidates))]);
 
 	let unmastered = prune_graph(&mut graph_wrap, &candidates);
-	emit("unmastered", vec![("nodes", set_string(&unmastered))]);
-	emit("ids_ignore", vec![("nodes", set_string(&unmastered))]);
+	let mut ids_ignore = unmastered.clone();
+	for id in &candidates {
+		ids_ignore.insert(id.clone());
+	}
+	emit("unmastered", vec![("nodes", set_string(&ids_ignore))]);
+	emit("ids_ignore", vec![("nodes", set_string(&ids_ignore))]);
 	let prune_result = build_prune_result(&graph_wrap);
 	emit("prune_result", vec![("spreading", map_string(&prune_result))]);
 
 	let ids_ignore = if candidates.iter().all(|id| is_leaf(&graph_wrap, id)) {
 		HashSet::new()
 	} else {
-		unmastered
+		ids_ignore
 	};
 
 	let mode = InboundMode::Duplicate;
@@ -121,9 +126,10 @@ fn main() {
 		"final",
 		vec![
 			("root", Value::String(best_root.unwrap_or_default())),
-			("tree", Value::String(final_tree_compact)),
+			("tree", Value::String(final_tree_compact.clone())),
 		],
 	);
+	emit("result", vec![("cgraph", Value::String(final_tree_compact))]);
 }
 
 fn score_candidates(graph: &scott::graph::GraphWrap) -> Vec<(String, Vec<i32>)> {
@@ -207,9 +213,17 @@ fn prune_graph(graph: &mut scott::graph::GraphWrap, candidates: &[String]) -> Ha
 							should_broadcast = true;
 						}
 						None => {
-							meta.master = Some(msg.clone());
-							meta.master_attempts.push(msg.clone());
-							should_broadcast = true;
+							if !meta.master_attempts.is_empty() {
+								if meta.master_attempts.iter().any(|m| m == &msg) {
+									continue;
+								}
+								meta.master_attempts.push(msg.clone());
+								should_broadcast = true;
+							} else {
+								meta.master = Some(msg.clone());
+								meta.master_attempts.push(msg.clone());
+								should_broadcast = true;
+							}
 						}
 					}
 				}
@@ -224,12 +238,9 @@ fn prune_graph(graph: &mut scott::graph::GraphWrap, candidates: &[String]) -> Ha
 	let mut unmastered = HashSet::new();
 	for node_index in graph.graph.node_indices() {
 		let node = &graph.graph[node_index];
-		if node.meta.master.is_none() {
+		if node.meta.master.is_none() && !node.meta.master_attempts.is_empty() {
 			unmastered.insert(node.id.clone());
 		}
-	}
-	for id in candidates {
-		unmastered.insert(id.clone());
 	}
 	unmastered
 }
@@ -399,6 +410,8 @@ fn build_prune_result(graph: &scott::graph::GraphWrap) -> BTreeMap<String, Vec<S
 		let node = &graph.graph[node_index];
 		if let Some(master) = node.meta.master.as_ref() {
 			spreading.entry(master.clone()).or_default().push(node.id.clone());
+		} else if !node.meta.master_attempts.is_empty() {
+			spreading.entry("None".to_string()).or_default().push(node.id.clone());
 		}
 	}
 	spreading
