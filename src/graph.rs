@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use petgraph::graph::{EdgeIndex, NodeIndex, UnGraph};
+use petgraph::graph::{EdgeIndex, NodeIndex};
+use petgraph::graph::UnGraph;
+use petgraph::stable_graph::StableUnGraph;
 use std::collections::{HashSet, VecDeque};
 
 use crate::error::{ScottError, ScottResult};
@@ -36,7 +38,7 @@ pub struct EdgeData {
 
 #[derive(Debug, Default, Clone)]
 pub struct GraphWrap {
-	pub graph: UnGraph<NodeData, EdgeData>,
+	pub graph: StableUnGraph<NodeData, EdgeData>,
 	id_to_index: HashMap<String, NodeIndex>,
 	edge_count: usize,
 }
@@ -44,7 +46,7 @@ pub struct GraphWrap {
 impl GraphWrap {
 	pub fn new() -> Self {
 		Self {
-			graph: UnGraph::default(),
+			graph: StableUnGraph::default(),
 			id_to_index: HashMap::new(),
 			edge_count: 0,
 		}
@@ -122,6 +124,26 @@ impl GraphWrap {
 		};
 		self.graph.remove_node(index);
 		true
+	}
+
+	pub fn to_ungraph(&self) -> UnGraph<(), ()> {
+		let mut graph = UnGraph::default();
+		let mut mapping: HashMap<NodeIndex, petgraph::graph::NodeIndex> = HashMap::new();
+
+		for node_index in self.graph.node_indices() {
+			let new_index = graph.add_node(());
+			mapping.insert(node_index, new_index);
+		}
+
+		for edge_index in self.graph.edge_indices() {
+			if let Some((a, b)) = self.graph.edge_endpoints(edge_index) {
+				if let (Some(na), Some(nb)) = (mapping.get(&a), mapping.get(&b)) {
+					graph.add_edge(*na, *nb, ());
+				}
+			}
+		}
+
+		graph
 	}
 
 	pub fn node_index(&self, id: &str) -> Option<NodeIndex> {
@@ -233,7 +255,8 @@ impl GraphWrap {
 	}
 
 	pub fn reset_floors(&mut self) {
-		for node_index in self.graph.node_indices() {
+		let node_indices: Vec<_> = self.graph.node_indices().collect();
+		for node_index in node_indices {
 			if let Some(node) = self.graph.node_weight_mut(node_index) {
 				node.meta.floor = None;
 			}

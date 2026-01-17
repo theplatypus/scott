@@ -1,8 +1,9 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 use scott::dag::{to_dag_with_mode, InboundMode};
 use scott::parse::from_dot;
-use scott::tree::to_tree_string;
+use scott::tree::{to_tree_string, to_tree_string_with_depth};
+use serde_json::Value;
 
 fn main() {
 	let args: Vec<String> = std::env::args().collect();
@@ -15,27 +16,25 @@ fn main() {
 	let mut graph_wrap = graph.as_wrap().clone();
 
 	let scores = score_candidates(&graph_wrap);
-	println!("candidates:");
-	for (id, score) in &scores {
-		println!("  {id}: {:?}", score);
-	}
+	emit("candidates", vec![("scores", scores_to_json(&scores))]);
 	let candidates = select_candidates(&scores);
-	println!("selected candidates: {:?}", candidates);
+	emit("selected_candidates", vec![("candidates", vec_string(&candidates))]);
 
 	let unmastered = prune_graph(&mut graph_wrap, &candidates);
-	println!("unmastered: {:?}", unmastered);
+	emit("unmastered", vec![("nodes", set_string(&unmastered))]);
+	emit("ids_ignore", vec![("nodes", set_string(&unmastered))]);
+	let prune_result = build_prune_result(&graph_wrap);
+	emit("prune_result", vec![("spreading", map_string(&prune_result))]);
 
 	let ids_ignore = if candidates.iter().all(|id| is_leaf(&graph_wrap, id)) {
 		HashSet::new()
 	} else {
 		unmastered
 	};
-	println!("ids_ignore: {:?}", ids_ignore);
 
 	let mode = InboundMode::Duplicate;
 	let allow_hashes = true;
 
-	println!("candidate trees (restricted):");
 	for id_candidate in &candidates {
 		let dag = to_dag_with_mode(&graph_wrap, id_candidate, &ids_ignore, mode, allow_hashes)
 			.expect("failed to build dag");
@@ -43,34 +42,58 @@ fn main() {
 			.expect("failed to build tree");
 		let tree_compact = compress_cgraph(&tree);
 		let (virtuals, mirrors) = count_special_nodes(&dag);
-		println!("  {id_candidate} -> {}", tree_compact);
-		println!("    dag nodes: {} edges: {} virtuals: {} mirrors: {}", dag.graph.node_count(), dag.graph.edge_count(), virtuals, mirrors);
+		emit(
+			"candidate_tree_restricted",
+			vec![
+				("candidate", Value::String(id_candidate.clone())),
+				("tree", Value::String(tree_compact)),
+				("dag_nodes", Value::Number(dag.graph.node_count().into())),
+				("dag_edges", Value::Number(dag.graph.edge_count().into())),
+				("dag_virtuals", Value::Number(virtuals.into())),
+				("dag_mirrors", Value::Number(mirrors.into())),
+			],
+		);
 	}
 
 	let mut elected = Vec::new();
-	let mut max_score: Option<String> = None;
+	let mut max_score: Option<(i32, String)> = None;
 	for id_candidate in &candidates {
 		let dag = to_dag_with_mode(&graph_wrap, id_candidate, &ids_ignore, mode, allow_hashes)
 			.expect("failed to build dag");
-		let tree = to_tree_string(&dag, id_candidate, &ids_ignore)
+		let (tree, depth) = to_tree_string_with_depth(&dag, id_candidate, &ids_ignore)
 			.expect("failed to build tree");
+		let score = (depth, tree.clone());
 		match max_score {
-			Some(ref score) if tree == *score => {
+			Some(ref best) if score == *best => {
 				elected.push(id_candidate.clone());
 			}
-			Some(ref score) if tree > *score => {
-				max_score = Some(tree);
+			Some(ref best) if score > *best => {
+				max_score = Some(score);
 				elected.clear();
 				elected.push(id_candidate.clone());
 			}
 			None => {
-				max_score = Some(tree);
+				max_score = Some(score);
 				elected.push(id_candidate.clone());
 			}
 			_ => {}
 		}
 	}
-	println!("elected: {:?}", elected);
+	let score_json = match max_score {
+		Some((depth, tree)) => Value::Array(vec![
+			Value::Number(depth.into()),
+			Value::String(String::new()),
+			Value::String(tree),
+		]),
+		None => Value::Null,
+	};
+	emit(
+		"elected",
+		vec![
+			("candidates", vec_string(&elected)),
+			("score", score_json),
+		],
+	);
 
 	let empty_ignore = HashSet::new();
 	let mut best_tree: Option<String> = None;
@@ -94,8 +117,13 @@ fn main() {
 	}
 	let final_tree = best_tree.unwrap_or_default();
 	let final_tree_compact = compress_cgraph(&final_tree);
-	println!("final root: {:?}", best_root);
-	println!("final tree: {}", final_tree_compact);
+	emit(
+		"final",
+		vec![
+			("root", Value::String(best_root.unwrap_or_default())),
+			("tree", Value::String(final_tree_compact)),
+		],
+	);
 }
 
 fn score_candidates(graph: &scott::graph::GraphWrap) -> Vec<(String, Vec<i32>)> {
@@ -269,4 +297,109 @@ fn compress_cgraph(cgraph: &str) -> String {
 	}
 
 	output
+}
+
+fn emit(event: &str, fields: Vec<(&str, Value)>) {
+	let mut entries: Vec<(String, String)> = fields
+		.into_iter()
+		.map(|(key, value)| (key.to_string(), to_json(value)))
+		.collect();
+	entries.sort_by(|a, b| a.0.cmp(&b.0));
+	let mut out = String::new();
+	out.push_str("TRACE ");
+	out.push_str(event);
+	for (key, value) in entries {
+		out.push(' ');
+		out.push_str(&key);
+		out.push('=');
+		out.push_str(&value);
+	}
+	println!("{out}");
+}
+
+fn to_json(value: Value) -> String {
+	match value {
+		Value::Object(map) => {
+			let mut entries: Vec<(String, String)> = map
+				.into_iter()
+				.map(|(key, value)| (key, to_json(value)))
+				.collect();
+			entries.sort_by(|a, b| a.0.cmp(&b.0));
+			let mut out = String::from("{");
+			for (idx, (key, value)) in entries.iter().enumerate() {
+				if idx > 0 {
+					out.push(',');
+				}
+				out.push_str(&format!("\"{}\":{}", escape_json(key), value));
+			}
+			out.push('}');
+			out
+		}
+		Value::Array(items) => {
+			let mut out = String::from("[");
+			for (idx, item) in items.into_iter().enumerate() {
+				if idx > 0 {
+					out.push(',');
+				}
+				out.push_str(&to_json(item));
+			}
+			out.push(']');
+			out
+		}
+		Value::String(s) => format!("\"{}\"", escape_json(&s)),
+		Value::Number(n) => n.to_string(),
+		Value::Bool(b) => {
+			if b { "true".to_string() } else { "false".to_string() }
+		}
+		Value::Null => "null".to_string(),
+	}
+}
+
+fn escape_json(input: &str) -> String {
+	input
+		.replace('\\', "\\\\")
+		.replace('"', "\\\"")
+		.replace('\n', "\\n")
+		.replace('\r', "\\r")
+		.replace('\t', "\\t")
+}
+
+fn scores_to_json(scores: &[(String, Vec<i32>)]) -> Value {
+	let mut entries = Vec::new();
+	for (id, score) in scores {
+		let score_value = Value::Array(score.iter().map(|v| Value::Number((*v).into())).collect());
+		entries.push(Value::Array(vec![Value::String(id.clone()), score_value]));
+	}
+	Value::Array(entries)
+}
+
+fn vec_string(items: &[String]) -> Value {
+	Value::Array(items.iter().map(|item| Value::String(item.clone())).collect())
+}
+
+fn set_string(items: &HashSet<String>) -> Value {
+	let mut values: Vec<String> = items.iter().cloned().collect();
+	values.sort();
+	vec_string(&values)
+}
+
+fn map_string(map: &BTreeMap<String, Vec<String>>) -> Value {
+	let mut obj = serde_json::Map::new();
+	for (key, value) in map {
+		let mut values = value.clone();
+		values.sort();
+		obj.insert(key.clone(), vec_string(&values));
+	}
+	Value::Object(obj)
+}
+
+fn build_prune_result(graph: &scott::graph::GraphWrap) -> BTreeMap<String, Vec<String>> {
+	let mut spreading: BTreeMap<String, Vec<String>> = BTreeMap::new();
+	for node_index in graph.graph.node_indices() {
+		let node = &graph.graph[node_index];
+		if let Some(master) = node.meta.master.as_ref() {
+			spreading.entry(master.clone()).or_default().push(node.id.clone());
+		}
+	}
+	spreading
 }

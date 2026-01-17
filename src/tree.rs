@@ -24,39 +24,66 @@ pub fn to_tree_string(
 	root_id: &str,
 	ids_ignore: &HashSet<String>,
 ) -> Result<String, String> {
+	let (tree, _depth) = to_tree_string_with_depth(graph, root_id, ids_ignore)?;
+	Ok(tree)
+}
+
+pub fn to_tree_string_with_depth(
+	graph: &GraphWrap,
+	root_id: &str,
+	ids_ignore: &HashSet<String>,
+) -> Result<(String, i32), String> {
 	let root_index = graph
 		.node_index(root_id)
 		.ok_or_else(|| format!("unknown root id '{}'", root_id))?;
-	if ids_ignore.contains(root_id) {
-		return Err("root id is ignored".to_string());
-	}
+	let mut effective_ignore = ids_ignore.clone();
+	effective_ignore.remove(root_id);
 
 	let mut visited: HashSet<NodeIndex> = HashSet::new();
-	let mut out: HashMap<NodeIndex, String> = HashMap::new();
-	let mut stack: Vec<(NodeIndex, Option<NodeIndex>, bool, Vec<(NodeIndex, String)>)> = Vec::new();
+	let mut out: HashMap<NodeIndex, (String, i32)> = HashMap::new();
+	let mut stack: Vec<(NodeIndex, Option<NodeIndex>, bool, Vec<(usize, NodeIndex, String)>)> = Vec::new();
 
 	stack.push((root_index, None, false, Vec::new()));
 
 	while let Some((node_index, parent, expanded, mut children)) = stack.pop() {
 		if expanded {
 			let label = format_label(graph, node_index);
-			let node_str = if children.is_empty() {
+			let mut child_outputs: Vec<(usize, NodeIndex, String, i32, String)> = children
+				.iter()
+				.map(|(position, child_index, modality)| {
+					let (child_str, child_depth) = out
+						.get(child_index)
+						.cloned()
+						.unwrap_or_else(|| ("?".to_string(), 1));
+					(*position, *child_index, modality.clone(), child_depth, child_str)
+				})
+				.collect();
+			child_outputs.sort_by(|(a_pos, _a_idx, a_mod, a_depth, a_str), (b_pos, _b_idx, b_mod, b_depth, b_str)| {
+				let key_a = (*a_depth, a_mod, a_str);
+				let key_b = (*b_depth, b_mod, b_str);
+				key_a.cmp(&key_b).then_with(|| a_pos.cmp(b_pos))
+			});
+
+			let node_str = if child_outputs.is_empty() {
 				label
 			} else {
-				let parts = children
+				let parts = child_outputs
 					.iter()
-					.map(|(child_index, modality)| {
-						let child_str = out
-							.get(child_index)
-							.cloned()
-							.unwrap_or_else(|| "?".to_string());
-						format!("{child_str}:{modality}")
-					})
+					.map(|(_, _, modality, _, child_str)| format!("{child_str}:{modality}"))
 					.collect::<Vec<_>>()
 					.join(", ");
 				format!("({parts}){label}")
 			};
-			out.insert(node_index, node_str);
+			let depth = if child_outputs.is_empty() {
+				1
+			} else {
+				1 + child_outputs
+					.iter()
+					.map(|(_, _, _, depth, _)| *depth)
+					.max()
+					.unwrap_or(0)
+			};
+			out.insert(node_index, (node_str, depth));
 			continue;
 		}
 
@@ -65,7 +92,7 @@ pub fn to_tree_string(
 		}
 		visited.insert(node_index);
 
-		for neighbor in graph.graph.neighbors(node_index) {
+		for (position, neighbor) in graph.graph.neighbors(node_index).enumerate() {
 			if Some(neighbor) == parent {
 				continue;
 			}
@@ -73,7 +100,7 @@ pub fn to_tree_string(
 				Some(node) => node.id.as_str(),
 				None => continue,
 			};
-			if ids_ignore.contains(neighbor_id) {
+			if effective_ignore.contains(neighbor_id) {
 				continue;
 			}
 			if visited.contains(&neighbor) {
@@ -86,22 +113,16 @@ pub fn to_tree_string(
 				.map(|edge| edge.modality.as_str())
 				.unwrap_or("1")
 				.to_string();
-			children.push((neighbor, modality));
+			children.push((position, neighbor, modality));
 		}
 
-		children.sort_by(|(a_index, _), (b_index, _)| {
-			let a_id = graph.graph[*a_index].id.as_str();
-			let b_id = graph.graph[*b_index].id.as_str();
-			a_id.cmp(b_id)
-		});
-
 		stack.push((node_index, parent, true, children.clone()));
-		for (child, _) in children.into_iter().rev() {
+		for (_, child, _) in children.into_iter().rev() {
 			stack.push((child, Some(node_index), false, Vec::new()));
 		}
 	}
 
 	out.get(&root_index)
-		.cloned()
+		.map(|(tree, depth)| (tree.clone(), *depth))
 		.ok_or_else(|| "failed to build tree string".to_string())
 }

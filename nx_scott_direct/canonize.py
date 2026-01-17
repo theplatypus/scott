@@ -11,6 +11,7 @@ from .graph_ops import (
     to_tree,
 )
 from .tree import def_tree_fn
+from .trace import emit
 
 import json
 
@@ -35,6 +36,12 @@ def to_canonic_tree(graph: nx.Graph, candidate_rule: str = "$degree", branch_rul
     trace("# Step 1 : Root Candidates")
     score_nodes(graph, rule=candidate_rule, meta_attr="candidate_score")
 
+    candidate_scores = [
+        (id_node, graph.nodes[id_node]["meta"]["candidate_score"])
+        for id_node in graph.nodes
+    ]
+    emit("candidates", scores=candidate_scores)
+
     candidates = []
     max_score = ()
     for id_node in graph.nodes:
@@ -46,6 +53,7 @@ def to_canonic_tree(graph: nx.Graph, candidate_rule: str = "$degree", branch_rul
             candidates = [id_node]
 
     trace("Candidates : " + str(candidates) + "\n", 2)
+    emit("selected_candidates", candidates=candidates)
 
     trace("# Step 2 : Pruning")
     prune_graph(graph, candidates)
@@ -63,6 +71,8 @@ def to_canonic_tree(graph: nx.Graph, candidate_rule: str = "$degree", branch_rul
     unmastered += candidates
 
     unmastered = unmastered if False in [graph.degree[i] == 1 for i in candidates] else []
+    emit("unmastered", nodes=unmastered)
+    emit("ids_ignore", nodes=unmastered)
 
     trees = {}
     elected = []
@@ -76,6 +86,15 @@ def to_canonic_tree(graph: nx.Graph, candidate_rule: str = "$degree", branch_rul
         tree.score_tree(tree_function)
         trace("\n", 3)
         trace("Tree-" + str(tree.depth()) + " for candidate #" + str(id_candidate) + " / " + str(len(candidates)) + " : " + str(tree), 3)
+        emit(
+            "candidate_tree_restricted",
+            candidate=id_candidate,
+            tree=compress_cgraph(str(tree)),
+            dag_nodes=dag.number_of_nodes(),
+            dag_edges=dag.number_of_edges(),
+            dag_virtuals=_count_special_nodes(dag)[0],
+            dag_mirrors=_count_special_nodes(dag)[1],
+        )
 
         trees[id_candidate] = tree
         done += 1
@@ -88,25 +107,32 @@ def to_canonic_tree(graph: nx.Graph, candidate_rule: str = "$degree", branch_rul
 
     trace("\n")
     trace(" --- Election winner(s) : " + str(elected) + " with score " + str(max_score), 3)
+    emit("elected", candidates=elected, score=max_score)
 
-    candidate_trees = [
-        to_tree(
-            to_dag(graph, id_root=id_candidate, compact_form=compact, allow_hashes=allow_hashes),
-            id_root=id_candidate,
-            id_origin=None,
-            modality_origin=None,
+    candidate_trees = []
+    for id_candidate in elected:
+        candidate_trees.append(
+            (
+                id_candidate,
+                to_tree(
+                    to_dag(graph, id_root=id_candidate, compact_form=compact, allow_hashes=allow_hashes),
+                    id_root=id_candidate,
+                    id_origin=None,
+                    modality_origin=None,
+                ),
+            )
         )
-        for id_candidate in elected
-    ]
 
     res = []
-    for tree in candidate_trees:
+    for (id_candidate, tree) in candidate_trees:
         tree.score_tree(tree_function)
-        res.append((str(tree), tree))
+        res.append((str(tree), id_candidate, tree))
         tree.get_order_sequence()
 
-    winner = sorted(res, key=lambda i: i[0])[0][1]
+    winner = sorted(res, key=lambda i: i[0])[0][2]
+    winner_root = sorted(res, key=lambda i: i[0])[0][1]
     winner.get_order_sequence()
+    emit("final", root=winner_root, tree=compress_cgraph(str(winner)))
 
     return winner
 
@@ -207,6 +233,7 @@ def prune_graph(graph: nx.Graph, candidates: List[str]) -> nx.Graph:
 
     trace("## [Substep 2] : Print result :", 2)
     trace(json.dumps(spreading, indent=4), 3)
+    emit("prune_result", spreading=spreading)
 
     return graph
 
@@ -217,3 +244,15 @@ def broadcast(graph: nx.Graph, id_node_from, id_origin, msg: str, callback) -> b
         if neighbor != id_origin:
             acks.append(callback(id_node_from, neighbor, msg))
     return not False in acks
+
+
+def _count_special_nodes(graph: nx.Graph) -> tuple:
+    virtuals = 0
+    mirrors = 0
+    for node in graph.nodes:
+        meta = graph.nodes[node].get("meta", {})
+        if meta.get("is_virtual"):
+            virtuals += 1
+        if meta.get("is_mirror"):
+            mirrors += 1
+    return virtuals, mirrors
