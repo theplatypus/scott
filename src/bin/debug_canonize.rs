@@ -22,14 +22,14 @@ fn main() {
 	emit("selected_candidates", vec![("candidates", vec_string(&candidates))]);
 
 	let unmastered = prune_graph(&mut graph_wrap, &candidates);
+	let prune_result = build_prune_result(&graph_wrap);
+	emit("prune_result", vec![("spreading", map_string(&prune_result))]);
 	let mut ids_ignore = unmastered.clone();
 	for id in &candidates {
 		ids_ignore.insert(id.clone());
 	}
 	emit("unmastered", vec![("nodes", set_string(&ids_ignore))]);
 	emit("ids_ignore", vec![("nodes", set_string(&ids_ignore))]);
-	let prune_result = build_prune_result(&graph_wrap);
-	emit("prune_result", vec![("spreading", map_string(&prune_result))]);
 
 	let ids_ignore = if candidates.iter().all(|id| is_leaf(&graph_wrap, id)) {
 		HashSet::new()
@@ -89,7 +89,7 @@ fn main() {
 	let score_json = match max_score {
 		Some((depth, tree)) => Value::Array(vec![
 			Value::Number(depth.into()),
-			Value::String(String::new()),
+			Value::Null,
 			Value::String(tree),
 		]),
 		None => Value::Null,
