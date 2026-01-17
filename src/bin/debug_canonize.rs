@@ -41,7 +41,8 @@ fn main() {
 	let allow_hashes = true;
 
 	for id_candidate in &candidates {
-		let dag = to_dag_with_mode(&graph_wrap, id_candidate, &ids_ignore, mode, allow_hashes)
+		let empty_ignore = HashSet::new();
+		let dag = to_dag_with_mode(&graph_wrap, id_candidate, &empty_ignore, mode, allow_hashes)
 			.expect("failed to build dag");
 		let tree = to_tree_string(&dag, id_candidate, &ids_ignore)
 			.expect("failed to build tree");
@@ -63,7 +64,8 @@ fn main() {
 	let mut elected = Vec::new();
 	let mut max_score: Option<(i32, String)> = None;
 	for id_candidate in &candidates {
-		let dag = to_dag_with_mode(&graph_wrap, id_candidate, &ids_ignore, mode, allow_hashes)
+		let empty_ignore = HashSet::new();
+		let dag = to_dag_with_mode(&graph_wrap, id_candidate, &empty_ignore, mode, allow_hashes)
 			.expect("failed to build dag");
 		let (tree, depth) = to_tree_string_with_depth(&dag, id_candidate, &ids_ignore)
 			.expect("failed to build tree");

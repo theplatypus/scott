@@ -38,7 +38,8 @@ pub fn to_cgraph(
 	let mut elected = Vec::new();
 	let mut max_score: Option<(i32, String, String)> = None;
 	for id_candidate in &candidates {
-		let dag = to_dag_with_mode(&graph, id_candidate, &ids_ignore, mode, _allow_hashes)?;
+		let empty_ignore = HashSet::new();
+		let dag = to_dag_with_mode(&graph, id_candidate, &empty_ignore, mode, _allow_hashes)?;
 		let (tree, depth) = to_tree_string_with_depth(&dag, id_candidate, &ids_ignore)
 			.map_err(ScottError::Parse)?;
 		let score = (depth, String::new(), tree.clone());
