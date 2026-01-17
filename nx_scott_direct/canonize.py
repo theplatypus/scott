@@ -71,8 +71,8 @@ def to_canonic_tree(graph: nx.Graph, candidate_rule: str = "$degree", branch_rul
     unmastered += candidates
 
     unmastered = unmastered if False in [graph.degree[i] == 1 for i in candidates] else []
-    emit("unmastered", nodes=unmastered)
-    emit("ids_ignore", nodes=unmastered)
+    emit("unmastered", nodes=sorted(unmastered))
+    emit("ids_ignore", nodes=sorted(unmastered))
 
     trees = {}
     elected = []
@@ -233,7 +233,8 @@ def prune_graph(graph: nx.Graph, candidates: List[str]) -> nx.Graph:
 
     trace("## [Substep 2] : Print result :", 2)
     trace(json.dumps(spreading, indent=4), 3)
-    emit("prune_result", spreading=spreading)
+    sorted_spreading = {key: sorted(value) for key, value in spreading.items()}
+    emit("prune_result", spreading=sorted_spreading)
 
     return graph
 
