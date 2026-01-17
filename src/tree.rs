@@ -65,7 +65,11 @@ pub fn to_tree_string_with_depth(
 			});
 
 			let node_str = if child_outputs.is_empty() {
-				label
+				if node_index == root_index {
+					format!("(){}", label)
+				} else {
+					label
+				}
 			} else {
 				let parts = child_outputs
 					.iter()
