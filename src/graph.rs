@@ -13,6 +13,7 @@ pub struct NodeMeta {
 	pub is_virtual: bool,
 	pub floor: Option<i32>,
 	pub magnet: Option<String>,
+	pub magnet_cache: Option<String>,
 	pub arity: Option<usize>,
 	pub master: Option<String>,
 	pub master_attempts: Vec<String>,
@@ -259,6 +260,7 @@ impl GraphWrap {
 		for node_index in node_indices {
 			if let Some(node) = self.graph.node_weight_mut(node_index) {
 				node.meta.floor = None;
+				node.meta.magnet_cache = None;
 			}
 		}
 	}

@@ -24,7 +24,16 @@ pub fn to_tree_string(
 	root_id: &str,
 	ids_ignore: &HashSet<String>,
 ) -> Result<String, String> {
-	let (tree, _depth) = to_tree_string_with_depth(graph, root_id, ids_ignore)?;
+	let (tree, _depth) = to_tree_string_with_depth_order(graph, root_id, ids_ignore, true)?;
+	Ok(tree)
+}
+
+pub fn to_tree_string_for_magnet(
+	graph: &GraphWrap,
+	root_id: &str,
+	ids_ignore: &HashSet<String>,
+) -> Result<String, String> {
+	let (tree, _depth) = to_tree_string_with_depth_order(graph, root_id, ids_ignore, false)?;
 	Ok(tree)
 }
 
@@ -32,6 +41,15 @@ pub fn to_tree_string_with_depth(
 	graph: &GraphWrap,
 	root_id: &str,
 	ids_ignore: &HashSet<String>,
+) -> Result<(String, i32), String> {
+	to_tree_string_with_depth_order(graph, root_id, ids_ignore, true)
+}
+
+fn to_tree_string_with_depth_order(
+	graph: &GraphWrap,
+	root_id: &str,
+	ids_ignore: &HashSet<String>,
+	include_modality: bool,
 ) -> Result<(String, i32), String> {
 	let root_index = graph
 		.node_index(root_id)
@@ -48,6 +66,12 @@ pub fn to_tree_string_with_depth(
 	while let Some((node_index, parent, expanded, mut children)) = stack.pop() {
 		if expanded {
 			let label = format_label(graph, node_index);
+			let is_leaf = parent.is_some() && graph.graph.neighbors(node_index).count() == 1;
+			if is_leaf {
+				out.insert(node_index, (label, 1));
+				continue;
+			}
+
 			let mut child_outputs: Vec<(usize, NodeIndex, String, i32, String)> = children
 				.iter()
 				.map(|(position, child_index, modality)| {
@@ -58,18 +82,28 @@ pub fn to_tree_string_with_depth(
 					(*position, *child_index, modality.clone(), child_depth, child_str)
 				})
 				.collect();
-			child_outputs.sort_by(|(a_pos, _a_idx, a_mod, a_depth, a_str), (b_pos, _b_idx, b_mod, b_depth, b_str)| {
-				let key_a = (*a_depth, a_mod, a_str);
-				let key_b = (*b_depth, b_mod, b_str);
-				key_a.cmp(&key_b).then_with(|| a_pos.cmp(b_pos))
-			});
+			if include_modality {
+				child_outputs.sort_by(
+					|(a_pos, _a_idx, a_mod, a_depth, a_str),
+					  (b_pos, _b_idx, b_mod, b_depth, b_str)| {
+						let key_a = (*a_depth, a_mod, a_str);
+						let key_b = (*b_depth, b_mod, b_str);
+						key_a.cmp(&key_b).then_with(|| a_pos.cmp(b_pos))
+					},
+				);
+			} else {
+				child_outputs.sort_by(
+					|(a_pos, _a_idx, _a_mod, a_depth, a_str),
+					  (b_pos, _b_idx, _b_mod, b_depth, b_str)| {
+						let key_a = (*a_depth, a_str);
+						let key_b = (*b_depth, b_str);
+						key_a.cmp(&key_b).then_with(|| a_pos.cmp(b_pos))
+					},
+				);
+			}
 
 			let node_str = if child_outputs.is_empty() {
-				if node_index == root_index {
-					format!("(){}", label)
-				} else {
-					label
-				}
+				format!("(){}", label)
 			} else {
 				let parts = child_outputs
 					.iter()
