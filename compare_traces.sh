@@ -15,14 +15,17 @@ rs_norm="$(mktemp)"
 echo "== python =="
 SCOTT_TRACE=1 python3 - "$dot_path" >"$py_trace" <<'PY'
 import sys
+import json
 import networkx as nx
 from nx_scott_direct import to_cgraph
 
 dot_path = sys.argv[1]
 graph = nx.Graph(nx.nx_pydot.read_dot(dot_path))
-print(f"TRACE input dot={dot_path}")
-print(f"TRACE result cgraph={str(to_cgraph(graph))}")
+print(f"TRACE input dot={json.dumps(dot_path, separators=(',', ':'))}")
+print(f"TRACE result cgraph={json.dumps(str(to_cgraph(graph)), separators=(',', ':'))}")
 PY
+
+# cat "$py_trace"
 
 echo "== rust =="
 cargo run --bin debug_canonize -- "$dot_path" >"$rs_trace"
@@ -103,7 +106,9 @@ with open(dst, "w", encoding="utf-8") as handle:
 		handle.write(normalize_line(line) + "\n")
 PY
 
-echo "== diff =="
+# cat "$rs_trace"
+
+echo "== diff (normalized) =="
 set +e
 diff -u "$py_norm" "$rs_norm"
 diff_status=$?
@@ -111,6 +116,25 @@ set -e
 
 if [[ $diff_status -eq 0 ]]; then
 	echo "traces match"
+fi
+
+echo "== diff (raw) =="
+set +e
+diff -u "$py_trace" "$rs_trace"
+set -e
+
+echo "== result diff =="
+py_result="$(rg '^TRACE result ' "$py_trace" || true)"
+rs_result="$(rg '^TRACE result ' "$rs_trace" || true)"
+if [[ -n "$py_result" || -n "$rs_result" ]]; then
+	printf "%s\n" "$py_result" >"$py_trace.result"
+	printf "%s\n" "$rs_result" >"$rs_trace.result"
+	set +e
+	diff -u "$py_trace.result" "$rs_trace.result"
+	set -e
+	rm -f "$py_trace.result" "$rs_trace.result"
+else
+	echo "no TRACE result lines found"
 fi
 
 rm -f "$py_trace" "$rs_trace"
