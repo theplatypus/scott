@@ -8,6 +8,7 @@ from typing import Callable, List, Tuple
 import networkx as nx
 
 from .tree import Tree, def_tree_fn
+from .trace import emit
 
 Node_Callback = Callable[[str, str, str], bool]
 Comparator = Callable[[Tuple, Tuple], int]
@@ -418,6 +419,34 @@ def fix_inbound(graph: nx.Graph, inbound, id_mirror: str, scoring=def_tree_fn("$
     return True
 
 
+def _edge_repr(edge):
+    u, v, k = edge
+    if str(u) > str(v):
+        u, v = v, u
+    if k is None:
+        return [u, v]
+    return [u, v, k]
+
+
+def _inbound_repr(inbound):
+    floor, id_node, id_edges = inbound
+    edge_reprs = [_edge_repr(edge) for edge in id_edges]
+    edge_reprs.sort()
+    return [floor, id_node, edge_reprs]
+
+
+def _count_special_nodes(graph: nx.Graph) -> tuple:
+    virtuals = 0
+    mirrors = 0
+    for node in graph.nodes:
+        meta = graph.nodes[node].get("meta", {})
+        if meta.get("is_virtual"):
+            virtuals += 1
+        if meta.get("is_mirror"):
+            mirrors += 1
+    return virtuals, mirrors
+
+
 def to_dag(graph: nx.Graph, id_root: str, branch_rule: str = "$root.label > $depth > $lexic", ids_ignore: List = None, compact_form=False, allow_hashes=True) -> nx.Graph:
     graph = normalize_graph(graph)
     if ids_ignore is None:
@@ -453,15 +482,40 @@ def to_dag(graph: nx.Graph, id_root: str, branch_rule: str = "$root.label > $dep
         floor = floors[0]
 
         if floor in cobounds_by:
-            scored_cobounds = sorted(score_cobounds(graph, cobounds_by[floor]), reverse=True)
-            _, cobound = scored_cobounds[0]
+            scored_cobounds = score_cobounds(graph, cobounds_by[floor], allow_hashes=allow_hashes)
+            scored_cobounds = sorted(scored_cobounds, key=lambda entry: _edge_repr(entry[1]))
+            scored_cobounds = sorted(scored_cobounds, key=lambda entry: entry[0], reverse=True)
+            emit(
+                "dag_cobound_scores",
+                floor=floor,
+                scores=[(score, _edge_repr(edge)) for score, edge in scored_cobounds[:5]],
+            )
+            score, cobound = scored_cobounds[0]
+            emit("dag_choice", floor=floor, type="cobound", score=score, choice=_edge_repr(cobound))
             fix_cobound(graph, cobound, f"*{id_virtual}", f"*{id_virtual + 1}")
             id_virtual += 2
         else:
-            scored_inbounds = sorted(score_inbounds(graph, inbounds_by[floor]), reverse=True)
-            _, inbound = scored_inbounds[0]
+            scored_inbounds = score_inbounds(graph, inbounds_by[floor])
+            scored_inbounds = sorted(scored_inbounds, key=lambda entry: _inbound_repr(entry[1]))
+            scored_inbounds = sorted(scored_inbounds, key=lambda entry: entry[0], reverse=True)
+            emit(
+                "dag_inbound_scores",
+                floor=floor,
+                scores=[(score, _inbound_repr(inbound)) for score, inbound in scored_inbounds[:5]],
+            )
+            score, inbound = scored_inbounds[0]
+            emit("dag_choice", floor=floor, type="inbound", score=score, choice=_inbound_repr(inbound))
             fix_inbound(graph, inbound, f"#{id_mirror}", scoring=ordering_fn, mode=mode)
             id_mirror += 1
+
+        virtuals, mirrors = _count_special_nodes(graph)
+        emit(
+            "dag_counts",
+            nodes=graph.number_of_nodes(),
+            edges=graph.number_of_edges(),
+            virtuals=virtuals,
+            mirrors=mirrors,
+        )
 
     return graph
 
