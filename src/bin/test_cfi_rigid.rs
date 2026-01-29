@@ -120,7 +120,7 @@ fn write_csv(path: &str, rows: &[Vec<String>]) -> io::Result<()> {
 
 fn main() -> Result<(), String> {
     let mut max_n: Option<i32> = None;
-    let mut out_path = String::from("results_cfi-rigid-rust.csv");
+	let mut out_path = String::from("results/results_cfi-rigid-rs.csv");
 
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -257,7 +257,12 @@ fn main() -> Result<(), String> {
         groups.insert(group_str.clone(), variant_a.canon.clone());
     }
 
-    write_csv(&out_path, &rows).map_err(|err| format!("{err}"))?;
+	if let Some(parent) = Path::new(&out_path).parent() {
+		if !parent.as_os_str().is_empty() {
+			fs::create_dir_all(parent).map_err(|err| format!("{err}"))?;
+		}
+	}
+	write_csv(&out_path, &rows).map_err(|err| format!("{err}"))?;
 
     println!("Checked {total_pairs} pair(s); {pair_mismatches} mismatch(es).");
     println!("Checked cross-group uniqueness; {cross_mismatches} collision(s).");
