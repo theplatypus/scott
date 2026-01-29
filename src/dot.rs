@@ -58,8 +58,7 @@ fn parse_attrs(line: &str) -> std::collections::HashMap<String, String> {
 	attrs
 }
 
-pub fn parse_dot_file(path: &str) -> Result<GraphWrap, String> {
-	let content = fs::read_to_string(path).map_err(|err| err.to_string())?;
+pub fn parse_dot_content(content: &str) -> Result<GraphWrap, String> {
 	let mut graph = GraphWrap::new();
 
 	for (line_no, raw_line) in content.lines().enumerate() {
@@ -97,4 +96,9 @@ pub fn parse_dot_file(path: &str) -> Result<GraphWrap, String> {
 	}
 
 	Ok(graph)
+}
+
+pub fn parse_dot_file(path: &str) -> Result<GraphWrap, String> {
+	let content = fs::read_to_string(path).map_err(|err| err.to_string())?;
+	parse_dot_content(&content)
 }
