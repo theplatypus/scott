@@ -15,7 +15,7 @@ import time
 
 DOT_DIR = os.path.join("data", "isotest", "cfi-rigid-t2-dot")
 DOT_RE = re.compile(r"cfi-rigid-t2-(\d+)-(\d+)-(\d+)\.dot$")
-REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(REPO_ROOT, "results")
 
 
