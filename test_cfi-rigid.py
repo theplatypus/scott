@@ -14,5 +14,5 @@ if __name__ == "__main__":
 		engine = "nx"
 	elif backend in ("rs", "rust"):
 		engine = "rs"
-	args = ["validity", "--engine", engine] + sys.argv[1:]
+	args = ["cfi-rigid", "--engine", engine] + sys.argv[1:]
 	raise SystemExit(test_runner.main(args))

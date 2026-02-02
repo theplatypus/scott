@@ -14,6 +14,7 @@ This repository summary aims to be synthetic and straight to the goal. For more 
   * [Import Graphs](#import-graphs)
   * [Canonical traces](#from-source-code)
   * [Canonical Adjacency Matrices](#canonical-adjacency-matrices)
+- [Testing](#testing)
 - [Citation](#citation)
 - [Licence](#licence)
 - [References](#references)
@@ -234,6 +235,18 @@ g.adjacency_matrix() == h.adjacency_matrix()
 assert g.adjacency_matrix(canonic = True) == h.adjacency_matrix(canonic = True)
 
 ```
+
+## Testing
+
+Use the unified test runner to exercise the legacy (py), NetworkX (nx), and Rust (rs) implementations:
+
+```bash
+python3 test_runner.py --interactive
+python3 test_runner.py validity --engine py
+python3 test_runner.py cfi-rigid --engine rs --release -n 30
+```
+
+Results are written under `results/`. You can also switch the `scott` backend with `SCOTT_BACKEND=legacy|nx|rs`. For more detail, see `docs/Testing.md`.
 
 ## Citation
 

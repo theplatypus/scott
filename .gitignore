@@ -1,1 +1,4 @@
 *.pyc
+target/*
+.env/*
+*.so
