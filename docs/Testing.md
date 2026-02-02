@@ -12,6 +12,9 @@ Install dev tools via uv:
 
 ```bash
 uv pip install -e '.[dev]'
+# optional extras
+uv pip install -e '.[dev,nx]'
+uv pip install -e '.[dev,py]'
 ```
 
 Run shortcuts (provided as project scripts):
@@ -40,10 +43,13 @@ python3 test/cli/test_runner.py validity --engine nx
 python3 test/cli/test_runner.py validity --engine rs --release
 
 # cfi-rigid benchmark (writes CSV under results/)
-python3 test/cli/test_runner.py cfi-rigid --engine py -n 30
-python3 test/cli/test_runner.py cfi-rigid --engine nx -n 30
-python3 test/cli/test_runner.py cfi-rigid --engine rs -n 30 --release
+python3 test/cli/test_runner.py cfi-rigid --engine py -n 80
+python3 test/cli/test_runner.py cfi-rigid --engine nx -n 80
+python3 test/cli/test_runner.py cfi-rigid --engine rs -n 80 --release
 
+# alternative interpreter for pure-python suite
+uv run --python pypy@3.11 -- python test/cli/test_runner.py cfi-rigid --engine py -n 80
+uv run --python pypy@3.11 -- python test/cli/test_runner.py cfi-rigid --engine nx -n 80
 ```
 
 Outputs:
@@ -63,6 +69,8 @@ These remain available and simply forward to the unified runner:
 
 The `scott` Python package is a shim that can target a backend via `SCOTT_BACKEND`:
 
-- `SCOTT_BACKEND=legacy` (default)
+- `SCOTT_BACKEND=rs` (default when the extension is available)
+- `SCOTT_BACKEND=legacy`
 - `SCOTT_BACKEND=nx`
-- `SCOTT_BACKEND=rs`
+
+Note: the Rust backend requires the extension built via `maturin develop` (CPython only).

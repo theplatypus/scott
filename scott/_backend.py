@@ -27,7 +27,14 @@ def _load_scott_nx():
 
 
 def resolve_backend():
-	name = os.getenv("SCOTT_BACKEND", "legacy").strip().lower()
+	name = os.getenv("SCOTT_BACKEND", "").strip().lower()
+	if name in ("", "auto"):
+		try:
+			from . import _scott
+		except Exception:
+			name = "legacy"
+		else:
+			return "rs", _scott
 	if name in ("legacy", "py", "scott-legacy", "scott_legacy"):
 		import scott_legacy as legacy
 		return "py", legacy
