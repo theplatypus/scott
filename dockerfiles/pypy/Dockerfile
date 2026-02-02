@@ -1,4 +1,4 @@
-FROM pypy
+FROM pypy:3.7
 
 
 #DEB PACKAGES
@@ -17,7 +17,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 #RUN virtualenv -p pypy3 /opt/venv
 #RUN source /opt/venv/bin/activate
-RUN pip install ipython joblib jupyter redis
+RUN pip install ipython joblib #jupyter redis
 #RUN alias pypy="/opt/venv/pypy3"
 
 
