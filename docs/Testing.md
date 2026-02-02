@@ -58,6 +58,19 @@ Outputs:
 - `results/results_cfi-rigid-nx.csv`
 - `results/results_cfi-rigid-rs.csv`
 
+## Performance baseline
+
+Generate a repeatable baseline for the Rust engine:
+
+```bash
+cargo run --bin perf_baseline -- --max-n 30
+```
+
+This writes:
+
+- `results/perf_baseline.json`
+- `results/perf_baseline.csv`
+
 ## Compatibility wrappers
 
 These remain available and simply forward to the unified runner:
