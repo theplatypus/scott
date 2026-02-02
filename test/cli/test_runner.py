@@ -2,9 +2,16 @@
 """Unified test entrypoint for Scott variants."""
 
 import argparse
+import os
 import sys
 
-from test_harness import (
+TEST_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO_ROOT = os.path.dirname(TEST_DIR)
+for path in (TEST_DIR, REPO_ROOT):
+	if path not in sys.path:
+		sys.path.insert(0, path)
+
+from harness import (
 	EngineError,
 	compare_traces,
 	run_cfi_rigid_py,
