@@ -10,6 +10,7 @@ This repository summary aims to be synthetic and straight to the goal. For more 
   * [From source code](#from-source-code)
   * [From Pypi](#from-pypi)
   * [From Docker](#from-docker)
+- [Installation](#installation)
 - [Usage](#usage)
   * [Import Graphs](#import-graphs)
   * [Canonical traces](#from-source-code)
@@ -21,6 +22,8 @@ This repository summary aims to be synthetic and straight to the goal. For more 
 
 ## Getting started 
 
+See `docs/Installation.md` for a complete install guide (PyPI + local).
+
 ### From source code
 
 Simply clone the repo in a local repertory
@@ -30,9 +33,16 @@ Simply clone the repo in a local repertory
 git clone https://github.com/theplatypus/scott.git
 cd ./scott
 
-# (optionnal) install using setuptools
-python3 setup.py install
+# create a virtualenv (uv)
+uv venv
+uv pip install -e .
+
+# optional extras
+uv pip install -e '.[nx]'  # NetworkX backend + pydot
+uv pip install -e '.[py]'  # legacy pure-Python backend
 ```
+
+Use `SCOTT_BACKEND=nx` or `SCOTT_BACKEND=legacy` to select the backend at runtime.
 
 Then you should be able to import `scott` package from python :
 
@@ -40,11 +50,25 @@ Then you should be able to import `scott` package from python :
 import scott as st
 ```
 
+To enable the Rust backend, build the extension once (CPython only):
+
+```bash
+uv run maturin develop --release
+```
+
 ### From Pypi
 
 ```bash
-pip install <todo>
+pip install scott
+
+# optional extras
+pip install 'scott[nx]'
+pip install 'scott[py]'
 ```
+
+Notes:
+- The Rust backend is the default when available and requires a Rust toolchain when building from source (CPython only).
+- Select backend at runtime via `SCOTT_BACKEND=legacy|nx|rs`.
 
 ### From Docker
 
