@@ -32,6 +32,8 @@ pub struct Inbound {
 struct CoboundScore {
 	magnet_lo: String,
 	magnet_hi: String,
+	magnet_lo_bytes: Option<[u8; 16]>,
+	magnet_hi_bytes: Option<[u8; 16]>,
 	modality: String,
 	edge_a: String,
 	edge_b: String,
@@ -47,7 +49,8 @@ struct CoboundEntry {
 struct InboundScore {
 	arity: usize,
 	main_magnet: String,
-	root_magnets: Vec<String>,
+	main_magnet_bytes: Option<[u8; 16]>,
+	root_magnets: Vec<[u8; 16]>,
 	node_id: String,
 	edge_keys: Vec<(String, String)>,
 }
@@ -67,8 +70,26 @@ impl CoboundScore {
 	}
 }
 
+fn cmp_magnet_keys(
+	a_str: &str,
+	a_bytes: Option<[u8; 16]>,
+	b_str: &str,
+	b_bytes: Option<[u8; 16]>,
+) -> Ordering {
+	match (a_bytes, b_bytes) {
+		(Some(a_bytes), Some(b_bytes)) => a_bytes.cmp(&b_bytes),
+		_ => a_str.cmp(b_str),
+	}
+}
+
 fn cmp_cobound_entry(a: &CoboundEntry, b: &CoboundEntry) -> Ordering {
-	let score_cmp = b.score.magnet_lo.cmp(&a.score.magnet_lo);
+	let score_cmp = cmp_magnet_keys(
+		&a.score.magnet_lo,
+		a.score.magnet_lo_bytes,
+		&b.score.magnet_lo,
+		b.score.magnet_lo_bytes,
+	)
+	.reverse();
 	if score_cmp != Ordering::Equal {
 		return score_cmp;
 	}
@@ -76,7 +97,13 @@ fn cmp_cobound_entry(a: &CoboundEntry, b: &CoboundEntry) -> Ordering {
 	if modality_cmp != Ordering::Equal {
 		return modality_cmp;
 	}
-	let magnet_cmp = b.score.magnet_hi.cmp(&a.score.magnet_hi);
+	let magnet_cmp = cmp_magnet_keys(
+		&a.score.magnet_hi,
+		a.score.magnet_hi_bytes,
+		&b.score.magnet_hi,
+		b.score.magnet_hi_bytes,
+	)
+	.reverse();
 	if magnet_cmp != Ordering::Equal {
 		return magnet_cmp;
 	}
@@ -106,7 +133,13 @@ fn cmp_inbound_entry(a: &InboundEntry, b: &InboundEntry) -> Ordering {
 	if arity_cmp != Ordering::Equal {
 		return arity_cmp;
 	}
-	let magnet_cmp = b.score.main_magnet.cmp(&a.score.main_magnet);
+	let magnet_cmp = cmp_magnet_keys(
+		&a.score.main_magnet,
+		a.score.main_magnet_bytes,
+		&b.score.main_magnet,
+		b.score.main_magnet_bytes,
+	)
+	.reverse();
 	if magnet_cmp != Ordering::Equal {
 		return magnet_cmp;
 	}
@@ -258,13 +291,22 @@ fn select_cobound(
 			.modality
 			.clone();
 		let (a_id, b_id) = edge_key(graph, a, b);
-		let magnet_a = get_magnet(graph, a, allow_hashes)?;
-		let magnet_b = get_magnet(graph, b, allow_hashes)?;
-		let mut magnets = [magnet_a, magnet_b];
-		magnets.sort_unstable();
+		let (magnet_a, magnet_a_bytes) = get_magnet_with_key(graph, a, allow_hashes)?;
+		let (magnet_b, magnet_b_bytes) = get_magnet_with_key(graph, b, allow_hashes)?;
+
+		let (magnet_lo, magnet_hi, magnet_lo_bytes, magnet_hi_bytes) =
+			if cmp_magnet_keys(&magnet_a, magnet_a_bytes, &magnet_b, magnet_b_bytes)
+				!= Ordering::Greater
+			{
+				(magnet_a, magnet_b, magnet_a_bytes, magnet_b_bytes)
+			} else {
+				(magnet_b, magnet_a, magnet_b_bytes, magnet_a_bytes)
+			};
 		let score = CoboundScore {
-			magnet_lo: magnets[0].clone(),
-			magnet_hi: magnets[1].clone(),
+			magnet_lo,
+			magnet_hi,
+			magnet_lo_bytes,
+			magnet_hi_bytes,
 			modality,
 			edge_a: a_id,
 			edge_b: b_id,
@@ -325,7 +367,8 @@ fn select_inbound(
 	let mut top: Vec<InboundEntry> = Vec::new();
 	for inbound in inbounds {
 		let arity = inbound.edges.len();
-		let main_magnet = get_magnet(graph, inbound.node, allow_hashes)?;
+		let (main_magnet, main_magnet_bytes) =
+			get_magnet_with_key(graph, inbound.node, allow_hashes)?;
 		let mut root_magnets = Vec::with_capacity(arity);
 		for edge_index in &inbound.edges {
 			let (a, b) = graph
@@ -333,9 +376,8 @@ fn select_inbound(
 				.edge_endpoints(*edge_index)
 				.ok_or_else(|| ScottError::Parse("inbound endpoints missing".to_string()))?;
 			let other = if a == inbound.node { b } else { a };
-			let magnet = get_magnet(graph, other, allow_hashes)?;
-			let digest = md5::compute(magnet.as_bytes());
-			root_magnets.push(format!("{:x}", digest));
+			let digest = get_magnet_value_digest(graph, other, allow_hashes)?;
+			root_magnets.push(digest);
 		}
 		root_magnets.sort_unstable();
 
@@ -344,6 +386,7 @@ fn select_inbound(
 		let score = InboundScore {
 			arity,
 			main_magnet,
+			main_magnet_bytes,
 			root_magnets,
 			node_id,
 			edge_keys,
@@ -759,8 +802,12 @@ fn include_subgraph(
 }
 
 fn get_magnet(graph: &mut GraphWrap, node_index: NodeIndex, allow_hashes: bool) -> ScottResult<String> {
-	if let Some(magnet) = graph.graph[node_index].meta.magnet_cache.clone() {
-		return Ok(magnet);
+	if let Some(node) = graph.graph.node_weight(node_index) {
+		if let Some(magnet) = node.meta.magnet_cache.as_ref() {
+			if node.meta.magnet_cache_hashed == allow_hashes {
+				return Ok(magnet.clone());
+			}
+		}
 	}
 	let floor = graph.graph[node_index]
 		.meta
@@ -779,11 +826,11 @@ fn get_magnet(graph: &mut GraphWrap, node_index: NodeIndex, allow_hashes: bool) 
 	let tree = to_tree_string_for_magnet(graph, &node_id, &ids_ignore)
 		.map_err(ScottError::Parse)?;
 	let magnet = format!("_{}_", tree);
-	let value = if allow_hashes {
+	let (value, magnet_bytes) = if allow_hashes {
 		let digest = md5::compute(magnet.as_bytes());
-		format!("_{:x}_", digest)
+		(format!("_{:x}_", digest), Some(digest.0))
 	} else {
-		magnet
+		(magnet, None)
 	};
 
 	if std::env::var("SCOTT_TRACE_MAGNET").ok().as_deref() == Some("1") {
@@ -797,8 +844,39 @@ fn get_magnet(graph: &mut GraphWrap, node_index: NodeIndex, allow_hashes: bool) 
 	}
 	if let Some(node) = graph.graph.node_weight_mut(node_index) {
 		node.meta.magnet_cache = Some(value.clone());
+		node.meta.magnet_cache_bytes = magnet_bytes;
+		node.meta.magnet_cache_digest = None;
+		node.meta.magnet_cache_hashed = allow_hashes;
 	}
 	Ok(value)
+}
+
+fn get_magnet_with_key(
+	graph: &mut GraphWrap,
+	node_index: NodeIndex,
+	allow_hashes: bool,
+) -> ScottResult<(String, Option<[u8; 16]>)> {
+	let value = get_magnet(graph, node_index, allow_hashes)?;
+	let key = graph.graph[node_index].meta.magnet_cache_bytes;
+	Ok((value, key))
+}
+
+fn get_magnet_value_digest(
+	graph: &mut GraphWrap,
+	node_index: NodeIndex,
+	allow_hashes: bool,
+) -> ScottResult<[u8; 16]> {
+	if let Some(node) = graph.graph.node_weight(node_index) {
+		if let Some(digest) = node.meta.magnet_cache_digest {
+			return Ok(digest);
+		}
+	}
+	let value = get_magnet(graph, node_index, allow_hashes)?;
+	let digest = md5::compute(value.as_bytes()).0;
+	if let Some(node) = graph.graph.node_weight_mut(node_index) {
+		node.meta.magnet_cache_digest = Some(digest);
+	}
+	Ok(digest)
 }
 
 fn emit_counts(graph: &GraphWrap) {
@@ -962,7 +1040,7 @@ fn inbound_score_value(score: &InboundScore) -> Value {
 	Value::Array(vec![
 		Value::Number(score.arity.into()),
 		Value::String(score.main_magnet.clone()),
-		Value::String(score.root_magnets.join(" ")),
+		Value::String(join_hex_digests(&score.root_magnets)),
 	])
 }
 
@@ -976,4 +1054,28 @@ fn top_inbound_scores(scored: &[InboundEntry]) -> Vec<Value> {
 			])
 		})
 		.collect()
+}
+
+fn join_hex_digests(digests: &[[u8; 16]]) -> String {
+	if digests.is_empty() {
+		return String::new();
+	}
+	let mut out = String::new();
+	for (idx, digest) in digests.iter().enumerate() {
+		if idx > 0 {
+			out.push(' ');
+		}
+		out.push_str(&hex_encode(digest));
+	}
+	out
+}
+
+fn hex_encode(bytes: &[u8; 16]) -> String {
+	const LUT: &[u8; 16] = b"0123456789abcdef";
+	let mut out = String::with_capacity(32);
+	for byte in bytes {
+		out.push(LUT[(byte >> 4) as usize] as char);
+		out.push(LUT[(byte & 0x0f) as usize] as char);
+	}
+	out
 }
