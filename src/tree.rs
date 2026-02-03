@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use petgraph::graph::NodeIndex;
 
@@ -11,9 +12,22 @@ fn format_label(graph: &GraphWrap, node_index: NodeIndex) -> String {
 	let magnet = node.meta.magnet.as_deref().unwrap_or("");
 	if node.meta.is_mirror {
 		let arity = node.meta.arity.unwrap_or(0);
-		format!("{label}#{arity}{{{magnet}}}")
+		let mut out = String::with_capacity(label.len() + magnet.len() + 8);
+		out.push_str(label);
+		out.push('#');
+		out.push_str(&arity.to_string());
+		out.push('{');
+		out.push_str(magnet);
+		out.push('}');
+		out
 	} else if node.meta.is_virtual {
-		format!("{label}*{{{magnet}}}")
+		let mut out = String::with_capacity(label.len() + magnet.len() + 4);
+		out.push_str(label);
+		out.push('*');
+		out.push('{');
+		out.push_str(magnet);
+		out.push('}');
+		out
 	} else {
 		label.to_string()
 	}
@@ -57,7 +71,8 @@ fn to_tree_string_with_depth_order(
 
 	let node_count = graph.graph.node_count();
 	let mut visited: HashSet<NodeIndex> = HashSet::with_capacity(node_count);
-	let mut out: HashMap<NodeIndex, (String, i32)> = HashMap::with_capacity(node_count);
+	let mut out: HashMap<NodeIndex, (Arc<str>, i32)> = HashMap::with_capacity(node_count);
+	let mut intern: HashMap<Arc<str>, Arc<str>> = HashMap::with_capacity(node_count);
 	let mut stack: Vec<(NodeIndex, Option<NodeIndex>, bool, Vec<(usize, NodeIndex, String)>)> =
 		Vec::with_capacity(node_count);
 
@@ -68,16 +83,17 @@ fn to_tree_string_with_depth_order(
 			let label = format_label(graph, node_index);
 			let is_leaf = parent.is_some() && graph.graph.neighbors(node_index).count() == 1;
 			if is_leaf {
-				out.insert(node_index, (label, 1));
+				let arc = interned_arc(&mut intern, label);
+				out.insert(node_index, (arc, 1));
 				continue;
 			}
 
-			let mut child_outputs: Vec<(usize, NodeIndex, String, i32, String)> =
+			let mut child_outputs: Vec<(usize, NodeIndex, String, i32, Arc<str>)> =
 				Vec::with_capacity(children.len());
 			for (position, child_index, modality) in &children {
 				let (child_str, child_depth) = match out.get(child_index) {
 					Some((value, depth)) => (value.clone(), *depth),
-					None => ("?".to_string(), 1),
+					None => (Arc::<str>::from("?"), 1),
 				};
 				child_outputs.push((*position, *child_index, modality.clone(), child_depth, child_str));
 			}
@@ -101,16 +117,7 @@ fn to_tree_string_with_depth_order(
 				);
 			}
 
-			let node_str = if child_outputs.is_empty() {
-				format!("(){}", label)
-			} else {
-				let parts = child_outputs
-					.iter()
-					.map(|(_, _, modality, _, child_str)| format!("{child_str}:{modality}"))
-					.collect::<Vec<_>>()
-					.join(", ");
-				format!("({parts}){label}")
-			};
+			let node_str = build_node_string(&label, &child_outputs);
 			let depth = if child_outputs.is_empty() {
 				1
 			} else {
@@ -120,7 +127,8 @@ fn to_tree_string_with_depth_order(
 					.max()
 					.unwrap_or(0)
 			};
-			out.insert(node_index, (node_str, depth));
+			let arc = interned_arc(&mut intern, node_str);
+			out.insert(node_index, (arc, depth));
 			continue;
 		}
 
@@ -164,6 +172,43 @@ fn to_tree_string_with_depth_order(
 	}
 
 	out.get(&root_index)
-		.map(|(tree, depth)| (tree.clone(), *depth))
+		.map(|(tree, depth)| (tree.to_string(), *depth))
 		.ok_or_else(|| "failed to build tree string".to_string())
+}
+
+fn interned_arc(intern: &mut HashMap<Arc<str>, Arc<str>>, value: String) -> Arc<str> {
+	if let Some(existing) = intern.get(value.as_str()) {
+		return existing.clone();
+	}
+	let arc: Arc<str> = Arc::from(value);
+	intern.insert(arc.clone(), arc.clone());
+	arc
+}
+
+fn build_node_string(
+	label: &str,
+	children: &[(usize, NodeIndex, String, i32, Arc<str>)],
+) -> String {
+	let mut capacity = label.len() + 2;
+	if !children.is_empty() {
+		for (idx, (_, _, modality, _, child_str)) in children.iter().enumerate() {
+			if idx > 0 {
+				capacity += 2;
+			}
+			capacity += child_str.len() + 1 + modality.len();
+		}
+	}
+	let mut out = String::with_capacity(capacity);
+	out.push('(');
+	for (idx, (_, _, modality, _, child_str)) in children.iter().enumerate() {
+		if idx > 0 {
+			out.push_str(", ");
+		}
+		out.push_str(child_str.as_ref());
+		out.push(':');
+		out.push_str(modality);
+	}
+	out.push(')');
+	out.push_str(label);
+	out
 }
