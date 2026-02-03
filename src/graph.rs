@@ -14,6 +14,9 @@ pub struct NodeMeta {
 	pub floor: Option<i32>,
 	pub magnet: Option<String>,
 	pub magnet_cache: Option<String>,
+	pub magnet_cache_bytes: Option<[u8; 16]>,
+	pub magnet_cache_digest: Option<[u8; 16]>,
+	pub magnet_cache_hashed: bool,
 	pub arity: Option<usize>,
 	pub master: Option<String>,
 	pub master_attempts: Vec<String>,
@@ -261,6 +264,9 @@ impl GraphWrap {
 			if let Some(node) = self.graph.node_weight_mut(node_index) {
 				node.meta.floor = None;
 				node.meta.magnet_cache = None;
+				node.meta.magnet_cache_bytes = None;
+				node.meta.magnet_cache_digest = None;
+				node.meta.magnet_cache_hashed = false;
 			}
 		}
 	}
