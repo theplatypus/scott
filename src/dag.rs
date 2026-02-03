@@ -189,24 +189,38 @@ fn rewrite_bounds(
 		}
 		work_guard += 1;
 
-		let cobounds = find_cobounds(graph);
-		let inbounds = find_inbounds(graph);
-		if cobounds.is_empty() && inbounds.is_empty() {
+		let buckets = collect_candidates(graph);
+		let cobound_floor = buckets.max_cobound_floor;
+		let inbound_floor = buckets.max_inbound_floor;
+		if cobound_floor.is_none() && inbound_floor.is_none() {
 			break;
 		}
 
-		let floor = highest_floor(&cobounds, &inbounds);
-		if let Some(cobound) = select_cobound(graph, &cobounds, floor, allow_hashes)? {
+		let floor = match (cobound_floor, inbound_floor) {
+			(Some(cobound), Some(inbound)) => std::cmp::max(cobound, inbound),
+			(Some(cobound), None) => cobound,
+			(None, Some(inbound)) => inbound,
+			(None, None) => break,
+		};
+
+		if cobound_floor == Some(floor) {
+			let bucket = floor_bucket(&buckets.cobounds, floor);
+			if let Some(cobound) = select_cobound(graph, bucket, floor, allow_hashes)? {
 			fix_cobound(graph, cobound, &mut virtual_counter, allow_hashes)?;
 			emit_counts(graph);
 			continue;
 		}
+		}
 
-		if let Some(inbound) = select_inbound(graph, &inbounds, floor, allow_hashes)? {
+		if inbound_floor == Some(floor) {
+			let bucket = floor_bucket(&buckets.inbounds, floor);
+			if let Some(inbound) = select_inbound(graph, bucket, floor, allow_hashes)? {
 			fix_inbound(graph, inbound, &mut mirror_counter, mode, allow_hashes)?;
 			emit_counts(graph);
 			continue;
 		}
+		}
+		break;
 	}
 
 	for (floor, nodes) in floors {
@@ -220,24 +234,19 @@ fn rewrite_bounds(
 	Ok(())
 }
 
-fn highest_floor(cobounds: &[Cobound], inbounds: &[Inbound]) -> i32 {
-	let max_cobound = cobounds.iter().map(|c| c.floor).max().unwrap_or(0);
-	let max_inbound = inbounds.iter().map(|i| i.floor).max().unwrap_or(0);
-	std::cmp::max(max_cobound, max_inbound)
-}
-
 fn select_cobound(
 	graph: &mut GraphWrap,
 	cobounds: &[Cobound],
 	floor: i32,
 	allow_hashes: bool,
 ) -> ScottResult<Option<Cobound>> {
+	if cobounds.is_empty() {
+		return Ok(None);
+	}
 	let trace = trace_enabled();
 	let mut best: Option<CoboundEntry> = None;
 	let mut top: Vec<CoboundEntry> = Vec::new();
-	let mut found = false;
-	for &cobound in cobounds.iter().filter(|c| c.floor == floor) {
-		found = true;
+	for &cobound in cobounds {
 		let (a, b) = graph
 			.graph
 			.edge_endpoints(cobound.edge)
@@ -274,10 +283,6 @@ fn select_cobound(
 		}
 	}
 
-	if !found {
-		return Ok(None);
-	}
-
 	if trace {
 		emit(
 			"dag_cobound_scores",
@@ -312,12 +317,13 @@ fn select_inbound(
 	floor: i32,
 	allow_hashes: bool,
 ) -> ScottResult<Option<Inbound>> {
+	if inbounds.is_empty() {
+		return Ok(None);
+	}
 	let trace = trace_enabled();
 	let mut best: Option<InboundEntry> = None;
 	let mut top: Vec<InboundEntry> = Vec::new();
-	let mut found = false;
-	for inbound in inbounds.iter().filter(|i| i.floor == floor) {
-		found = true;
+	for inbound in inbounds {
 		let arity = inbound.edges.len();
 		let main_magnet = get_magnet(graph, inbound.node, allow_hashes)?;
 		let mut root_magnets = Vec::with_capacity(arity);
@@ -359,10 +365,6 @@ fn select_inbound(
 		}
 	}
 
-	if !found {
-		return Ok(None);
-	}
-
 	if trace {
 		emit(
 			"dag_inbound_scores",
@@ -391,27 +393,57 @@ fn select_inbound(
 	}
 }
 
-fn find_cobounds(graph: &GraphWrap) -> Vec<Cobound> {
-	let mut cobounds = Vec::new();
+struct CandidateBuckets {
+	cobounds: Vec<Vec<Cobound>>,
+	inbounds: Vec<Vec<Inbound>>,
+	max_cobound_floor: Option<i32>,
+	max_inbound_floor: Option<i32>,
+}
+
+fn floor_bucket<T>(buckets: &[Vec<T>], floor: i32) -> &[T] {
+	if floor < 0 {
+		return &[];
+	}
+	let idx = floor as usize;
+	buckets.get(idx).map(|bucket| bucket.as_slice()).unwrap_or(&[])
+}
+
+fn ensure_bucket<T>(buckets: &mut Vec<Vec<T>>, floor: i32) -> Option<usize> {
+	if floor < 0 {
+		return None;
+	}
+	let idx = floor as usize;
+	if buckets.len() <= idx {
+		buckets.resize_with(idx + 1, Vec::new);
+	}
+	Some(idx)
+}
+
+fn collect_candidates(graph: &GraphWrap) -> CandidateBuckets {
+	let mut cobounds: Vec<Vec<Cobound>> = Vec::new();
+	let mut inbounds: Vec<Vec<Inbound>> = Vec::new();
+	let mut max_cobound_floor: Option<i32> = None;
+	let mut max_inbound_floor: Option<i32> = None;
+
 	for edge_index in graph.graph.edge_indices() {
 		if let Some((a, b)) = graph.graph.edge_endpoints(edge_index) {
 			let floor_a = graph.graph[a].meta.floor;
 			let floor_b = graph.graph[b].meta.floor;
 			if let (Some(floor_a), Some(floor_b)) = (floor_a, floor_b) {
 				if floor_a == floor_b {
-					cobounds.push(Cobound {
-						edge: edge_index,
-						floor: floor_a,
-					});
+					if let Some(idx) = ensure_bucket(&mut cobounds, floor_a) {
+						cobounds[idx].push(Cobound {
+							edge: edge_index,
+							floor: floor_a,
+						});
+						max_cobound_floor =
+							Some(max_cobound_floor.map_or(floor_a, |f| f.max(floor_a)));
+					}
 				}
 			}
 		}
 	}
-	cobounds
-}
 
-fn find_inbounds(graph: &GraphWrap) -> Vec<Inbound> {
-	let mut inbounds = Vec::new();
 	for node_index in graph.graph.node_indices() {
 		let floor = match graph.graph[node_index].meta.floor {
 			Some(floor) => floor,
@@ -428,14 +460,24 @@ fn find_inbounds(graph: &GraphWrap) -> Vec<Inbound> {
 			}
 		}
 		if upstairs.len() > 1 {
-			inbounds.push(Inbound {
-				floor,
-				node: node_index,
-				edges: upstairs,
-			});
+			if let Some(idx) = ensure_bucket(&mut inbounds, floor) {
+				inbounds[idx].push(Inbound {
+					floor,
+					node: node_index,
+					edges: upstairs,
+				});
+				max_inbound_floor =
+					Some(max_inbound_floor.map_or(floor, |f| f.max(floor)));
+			}
 		}
 	}
-	inbounds
+
+	CandidateBuckets {
+		cobounds,
+		inbounds,
+		max_cobound_floor,
+		max_inbound_floor,
+	}
 }
 
 fn fix_cobound(
