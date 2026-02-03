@@ -66,6 +66,12 @@ Generate a repeatable baseline for the Rust engine:
 cargo run --bin perf_baseline -- --max-n 30
 ```
 
+Optional parallel mode (higher memory usage):
+
+```bash
+cargo run --features parallel --bin perf_baseline -- --max-n 30
+```
+
 This writes:
 
 - `results/perf_baseline.json`
