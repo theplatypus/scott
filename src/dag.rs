@@ -15,7 +15,7 @@ pub enum InboundMode {
 	Elect,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Cobound {
 	pub edge: EdgeIndex,
 	pub floor: i32,
@@ -26,6 +26,113 @@ pub struct Inbound {
 	pub floor: i32,
 	pub node: NodeIndex,
 	pub edges: Vec<EdgeIndex>,
+}
+
+#[derive(Debug, Clone)]
+struct CoboundScore {
+	magnet_lo: String,
+	magnet_hi: String,
+	modality: String,
+	edge_a: String,
+	edge_b: String,
+}
+
+#[derive(Debug, Clone)]
+struct CoboundEntry {
+	score: CoboundScore,
+	cobound: Cobound,
+}
+
+#[derive(Debug, Clone)]
+struct InboundScore {
+	arity: usize,
+	main_magnet: String,
+	root_magnets: Vec<String>,
+	node_id: String,
+	edge_keys: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone)]
+struct InboundEntry {
+	score: InboundScore,
+	inbound: Inbound,
+}
+
+impl CoboundScore {
+	fn as_string(&self) -> String {
+		format!(
+			"{}-{}-{}",
+			self.magnet_lo, self.modality, self.magnet_hi
+		)
+	}
+}
+
+fn cmp_cobound_entry(a: &CoboundEntry, b: &CoboundEntry) -> Ordering {
+	let score_cmp = b.score.magnet_lo.cmp(&a.score.magnet_lo);
+	if score_cmp != Ordering::Equal {
+		return score_cmp;
+	}
+	let modality_cmp = b.score.modality.cmp(&a.score.modality);
+	if modality_cmp != Ordering::Equal {
+		return modality_cmp;
+	}
+	let magnet_cmp = b.score.magnet_hi.cmp(&a.score.magnet_hi);
+	if magnet_cmp != Ordering::Equal {
+		return magnet_cmp;
+	}
+	let edge_cmp = a.score.edge_a.cmp(&b.score.edge_a);
+	if edge_cmp != Ordering::Equal {
+		return edge_cmp;
+	}
+	a.score.edge_b.cmp(&b.score.edge_b)
+}
+
+fn insert_top_cobound(top: &mut Vec<CoboundEntry>, entry: CoboundEntry, limit: usize) {
+	let mut idx = 0usize;
+	while idx < top.len() {
+		if cmp_cobound_entry(&entry, &top[idx]) == Ordering::Less {
+			break;
+		}
+		idx += 1;
+	}
+	top.insert(idx, entry);
+	if top.len() > limit {
+		top.pop();
+	}
+}
+
+fn cmp_inbound_entry(a: &InboundEntry, b: &InboundEntry) -> Ordering {
+	let arity_cmp = b.score.arity.cmp(&a.score.arity);
+	if arity_cmp != Ordering::Equal {
+		return arity_cmp;
+	}
+	let magnet_cmp = b.score.main_magnet.cmp(&a.score.main_magnet);
+	if magnet_cmp != Ordering::Equal {
+		return magnet_cmp;
+	}
+	let roots_cmp = b.score.root_magnets.cmp(&a.score.root_magnets);
+	if roots_cmp != Ordering::Equal {
+		return roots_cmp;
+	}
+	let node_cmp = a.score.node_id.cmp(&b.score.node_id);
+	if node_cmp != Ordering::Equal {
+		return node_cmp;
+	}
+	a.score.edge_keys.cmp(&b.score.edge_keys)
+}
+
+fn insert_top_inbound(top: &mut Vec<InboundEntry>, entry: InboundEntry, limit: usize) {
+	let mut idx = 0usize;
+	while idx < top.len() {
+		if cmp_inbound_entry(&entry, &top[idx]) == Ordering::Less {
+			break;
+		}
+		idx += 1;
+	}
+	top.insert(idx, entry);
+	if top.len() > limit {
+		top.pop();
+	}
 }
 
 pub fn to_dag(
@@ -125,12 +232,12 @@ fn select_cobound(
 	floor: i32,
 	allow_hashes: bool,
 ) -> ScottResult<Option<Cobound>> {
-	let scoped: Vec<Cobound> = cobounds.iter().filter(|c| c.floor == floor).cloned().collect();
-	if scoped.is_empty() {
-		return Ok(None);
-	}
-	let mut scored: Vec<(String, (String, String), Cobound)> = Vec::new();
-	for cobound in scoped {
+	let trace = trace_enabled();
+	let mut best: Option<CoboundEntry> = None;
+	let mut top: Vec<CoboundEntry> = Vec::new();
+	let mut found = false;
+	for &cobound in cobounds.iter().filter(|c| c.floor == floor) {
+		found = true;
 		let (a, b) = graph
 			.graph
 			.edge_endpoints(cobound.edge)
@@ -144,41 +251,56 @@ fn select_cobound(
 		let (a_id, b_id) = edge_key(graph, a, b);
 		let magnet_a = get_magnet(graph, a, allow_hashes)?;
 		let magnet_b = get_magnet(graph, b, allow_hashes)?;
-		let sep = format!("-{}-", modality);
 		let mut magnets = [magnet_a, magnet_b];
-		magnets.sort();
-		let magnet = format!("{}{}{}", magnets[0], sep, magnets[1]);
-		scored.push((magnet, (a_id, b_id), cobound));
+		magnets.sort_unstable();
+		let score = CoboundScore {
+			magnet_lo: magnets[0].clone(),
+			magnet_hi: magnets[1].clone(),
+			modality,
+			edge_a: a_id,
+			edge_b: b_id,
+		};
+		let entry = CoboundEntry { score, cobound };
+		match best {
+			Some(ref current) => {
+				if cmp_cobound_entry(&entry, current) == Ordering::Less {
+					best = Some(entry.clone());
+				}
+			}
+			None => best = Some(entry.clone()),
+		}
+		if trace {
+			insert_top_cobound(&mut top, entry, 5);
+		}
 	}
-	scored.sort_by(|a, b| {
-		let score_cmp = b.0.cmp(&a.0);
-		if score_cmp != Ordering::Equal {
-			return score_cmp;
-		}
-		let edge_cmp = a.1.0.cmp(&b.1.0);
-		if edge_cmp != Ordering::Equal {
-			return edge_cmp;
-		}
-		a.1.1.cmp(&b.1.1)
-	});
-	emit(
-		"dag_cobound_scores",
-		vec![
-			("floor", Value::Number(floor.into())),
-			("scores", Value::Array(top_scores(&scored, graph, 5))),
-		],
-	);
-	if let Some((score, _edge_ids, cobound)) = scored.first().cloned() {
+
+	if !found {
+		return Ok(None);
+	}
+
+	if trace {
 		emit(
-			"dag_choice",
+			"dag_cobound_scores",
 			vec![
 				("floor", Value::Number(floor.into())),
-				("type", Value::String("cobound".to_string())),
-				("score", Value::String(score)),
-				("choice", edge_repr(graph, cobound.edge)),
+				("scores", Value::Array(top_cobound_scores(&top, graph))),
 			],
 		);
-		Ok(Some(cobound))
+	}
+
+	if let Some(entry) = best {
+		if trace {
+			emit(
+				"dag_choice",
+				vec![
+					("floor", Value::Number(floor.into())),
+					("type", Value::String("cobound".to_string())),
+					("score", Value::String(entry.score.as_string())),
+					("choice", edge_repr(graph, entry.cobound.edge)),
+				],
+			);
+		}
+		Ok(Some(entry.cobound))
 	} else {
 		Ok(None)
 	}
@@ -190,12 +312,15 @@ fn select_inbound(
 	floor: i32,
 	allow_hashes: bool,
 ) -> ScottResult<Option<Inbound>> {
-	let scoped: Vec<Inbound> = inbounds.iter().filter(|i| i.floor == floor).cloned().collect();
-	let mut scored: Vec<((usize, String, String), String, Inbound)> = Vec::new();
-	for inbound in scoped {
+	let trace = trace_enabled();
+	let mut best: Option<InboundEntry> = None;
+	let mut top: Vec<InboundEntry> = Vec::new();
+	let mut found = false;
+	for inbound in inbounds.iter().filter(|i| i.floor == floor) {
+		found = true;
 		let arity = inbound.edges.len();
 		let main_magnet = get_magnet(graph, inbound.node, allow_hashes)?;
-		let mut root_magnets = Vec::new();
+		let mut root_magnets = Vec::with_capacity(arity);
 		for edge_index in &inbound.edges {
 			let (a, b) = graph
 				.graph
@@ -206,45 +331,61 @@ fn select_inbound(
 			let digest = md5::compute(magnet.as_bytes());
 			root_magnets.push(format!("{:x}", digest));
 		}
-		root_magnets.sort();
-		let roots_joined = root_magnets.join(" ");
-		let score = (arity, main_magnet, roots_joined);
-		let repr = inbound_repr(graph, &inbound);
-		scored.push((score, to_json(repr), inbound));
+		root_magnets.sort_unstable();
+
+		let node_id = graph.graph[inbound.node].id.clone();
+		let edge_keys = inbound_edge_keys(graph, inbound);
+		let score = InboundScore {
+			arity,
+			main_magnet,
+			root_magnets,
+			node_id,
+			edge_keys,
+		};
+		let entry = InboundEntry {
+			score,
+			inbound: inbound.clone(),
+		};
+		match best {
+			Some(ref current) => {
+				if cmp_inbound_entry(&entry, current) == Ordering::Less {
+					best = Some(entry.clone());
+				}
+			}
+			None => best = Some(entry.clone()),
+		}
+		if trace {
+			insert_top_inbound(&mut top, entry, 5);
+		}
 	}
-	scored.sort_by(|a, b| {
-		let arity_cmp = b.0.0.cmp(&a.0.0);
-		if arity_cmp != Ordering::Equal {
-			return arity_cmp;
-		}
-		let magnet_cmp = b.0.1.cmp(&a.0.1);
-		if magnet_cmp != Ordering::Equal {
-			return magnet_cmp;
-		}
-		let roots_cmp = b.0.2.cmp(&a.0.2);
-		if roots_cmp != Ordering::Equal {
-			return roots_cmp;
-		}
-		a.1.cmp(&b.1)
-	});
-	emit(
-		"dag_inbound_scores",
-		vec![
-			("floor", Value::Number(floor.into())),
-			("scores", Value::Array(top_inbound_scores(&scored, graph, 5))),
-		],
-	);
-	if let Some((score, _repr, inbound)) = scored.first().cloned() {
+
+	if !found {
+		return Ok(None);
+	}
+
+	if trace {
 		emit(
-			"dag_choice",
+			"dag_inbound_scores",
 			vec![
 				("floor", Value::Number(floor.into())),
-				("type", Value::String("inbound".to_string())),
-				("score", inbound_score_value(&score)),
-				("choice", inbound_repr(graph, &inbound)),
+				("scores", Value::Array(top_inbound_scores(&top))),
 			],
 		);
-		Ok(Some(inbound))
+	}
+
+	if let Some(entry) = best {
+		if trace {
+			emit(
+				"dag_choice",
+				vec![
+					("floor", Value::Number(floor.into())),
+					("type", Value::String("inbound".to_string())),
+					("score", inbound_score_value(&entry.score)),
+					("choice", inbound_repr_from_keys(entry.inbound.floor, &entry.score)),
+				],
+			);
+		}
+		Ok(Some(entry.inbound))
 	} else {
 		Ok(None)
 	}
@@ -646,8 +787,12 @@ fn count_special_nodes(graph: &GraphWrap) -> (usize, usize) {
 	(virtuals, mirrors)
 }
 
+fn trace_enabled() -> bool {
+	std::env::var("SCOTT_TRACE").ok().as_deref() == Some("1")
+}
+
 fn emit(event: &str, fields: Vec<(&str, Value)>) {
-	if std::env::var("SCOTT_TRACE").ok().as_deref() != Some("1") {
+	if !trace_enabled() {
 		return;
 	}
 	let mut entries: Vec<(String, String)> = fields
@@ -733,57 +878,60 @@ fn edge_key(graph: &GraphWrap, a: NodeIndex, b: NodeIndex) -> (String, String) {
 	}
 }
 
-fn inbound_repr(graph: &GraphWrap, inbound: &Inbound) -> Value {
-	let node_id = graph.graph[inbound.node].id.clone();
-	let mut edges = inbound
-		.edges
+fn inbound_edge_keys(graph: &GraphWrap, inbound: &Inbound) -> Vec<(String, String)> {
+	let mut edges: Vec<(String, String)> = Vec::with_capacity(inbound.edges.len());
+	for edge_index in &inbound.edges {
+		if let Some((a, b)) = graph.graph.edge_endpoints(*edge_index) {
+			edges.push(edge_key(graph, a, b));
+		}
+	}
+	edges.sort_unstable();
+	edges
+}
+
+fn inbound_repr_from_keys(floor: i32, score: &InboundScore) -> Value {
+	let edges = score
+		.edge_keys
 		.iter()
-		.map(|edge| edge_repr(graph, *edge))
+		.map(|(a_id, b_id)| {
+			Value::Array(vec![Value::String(a_id.clone()), Value::String(b_id.clone())])
+		})
 		.collect::<Vec<_>>();
-	edges.sort_by(|a, b| {
-		let a_key = to_json(a.clone());
-		let b_key = to_json(b.clone());
-		a_key.cmp(&b_key)
-	});
 	Value::Array(vec![
-		Value::Number(inbound.floor.into()),
-		Value::String(node_id),
+		Value::Number(floor.into()),
+		Value::String(score.node_id.clone()),
 		Value::Array(edges),
 	])
 }
 
-fn top_scores(
-	scored: &[(String, (String, String), Cobound)],
-	graph: &GraphWrap,
-	limit: usize,
-) -> Vec<Value> {
+fn top_cobound_scores(scored: &[CoboundEntry], graph: &GraphWrap) -> Vec<Value> {
 	scored
 		.iter()
-		.take(limit)
-		.map(|(score, _edge_ids, cobound)| {
-			Value::Array(vec![Value::String(score.clone()), edge_repr(graph, cobound.edge)])
+		.map(|entry| {
+			Value::Array(vec![
+				Value::String(entry.score.as_string()),
+				edge_repr(graph, entry.cobound.edge),
+			])
 		})
 		.collect()
 }
 
-fn inbound_score_value(score: &(usize, String, String)) -> Value {
+fn inbound_score_value(score: &InboundScore) -> Value {
 	Value::Array(vec![
-		Value::Number(score.0.into()),
-		Value::String(score.1.clone()),
-		Value::String(score.2.clone()),
+		Value::Number(score.arity.into()),
+		Value::String(score.main_magnet.clone()),
+		Value::String(score.root_magnets.join(" ")),
 	])
 }
 
-fn top_inbound_scores(
-	scored: &[((usize, String, String), String, Inbound)],
-	graph: &GraphWrap,
-	limit: usize,
-) -> Vec<Value> {
+fn top_inbound_scores(scored: &[InboundEntry]) -> Vec<Value> {
 	scored
 		.iter()
-		.take(limit)
-		.map(|(score, _repr, inbound)| {
-			Value::Array(vec![inbound_score_value(score), inbound_repr(graph, inbound)])
+		.map(|entry| {
+			Value::Array(vec![
+				inbound_score_value(&entry.score),
+				inbound_repr_from_keys(entry.inbound.floor, &entry.score),
+			])
 		})
 		.collect()
 }
