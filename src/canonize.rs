@@ -6,6 +6,9 @@ use crate::error::{ScottError, ScottResult};
 use crate::graph::{Graph, GraphWrap};
 use crate::tree::{to_tree_string, to_tree_string_with_depth};
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 pub fn to_cgraph(
 	_graph: &Graph,
 	_candidate_rule: &str,
@@ -35,43 +38,35 @@ pub fn to_cgraph(
 		InboundMode::Duplicate
 	};
 
+	let candidate_results = collect_candidate_scores(
+		&graph,
+		&candidates,
+		&ids_ignore,
+		mode,
+		_allow_hashes,
+	)?;
 	let mut elected = Vec::new();
-	let mut max_score: Option<(i32, String, String)> = None;
-	for id_candidate in &candidates {
-		let empty_ignore = HashSet::new();
-		let dag = to_dag_with_mode(&graph, id_candidate, &empty_ignore, mode, _allow_hashes)?;
-		let (tree, depth) = to_tree_string_with_depth(&dag, id_candidate, &ids_ignore)
-			.map_err(ScottError::Parse)?;
-		let score = (depth, String::new(), tree.clone());
+	let mut max_score: Option<(i32, String)> = None;
+	for (id_candidate, depth, tree) in candidate_results {
+		let score = (depth, tree.clone());
 		match max_score {
 			Some(ref best) if score == *best => {
-				elected.push(id_candidate.clone());
+				elected.push(id_candidate);
 			}
 			Some(ref best) if score > *best => {
 				max_score = Some(score);
 				elected.clear();
-				elected.push(id_candidate.clone());
+				elected.push(id_candidate);
 			}
 			None => {
 				max_score = Some(score);
-				elected.push(id_candidate.clone());
+				elected.push(id_candidate);
 			}
 			_ => {}
 		}
 	}
 
-	let mut best_tree: Option<String> = None;
-	let empty_ignore = HashSet::new();
-	for id_candidate in &elected {
-		let dag = to_dag_with_mode(&graph, id_candidate, &empty_ignore, mode, _allow_hashes)?;
-		let tree = to_tree_string(&dag, id_candidate, &empty_ignore)
-			.map_err(ScottError::Parse)?;
-		match best_tree {
-			Some(ref current) if tree < *current => best_tree = Some(tree),
-			None => best_tree = Some(tree),
-			_ => {}
-		}
-	}
+	let best_tree = collect_best_tree(&graph, &elected, mode, _allow_hashes)?;
 
 	let output = best_tree.unwrap_or_default();
 	if _compress {
@@ -122,6 +117,94 @@ fn select_candidates(scores: &[(String, Vec<i32>)]) -> Vec<String> {
 		}
 	}
 	candidates
+}
+
+fn collect_candidate_scores(
+	graph: &GraphWrap,
+	candidates: &[String],
+	ids_ignore: &HashSet<String>,
+	mode: InboundMode,
+	allow_hashes: bool,
+) -> ScottResult<Vec<(String, i32, String)>> {
+	#[cfg(feature = "parallel")]
+	{
+		let empty_ignore = HashSet::new();
+		let results: Vec<ScottResult<(String, i32, String)>> = candidates
+			.par_iter()
+			.map(|id_candidate| {
+				let dag = to_dag_with_mode(graph, id_candidate, &empty_ignore, mode, allow_hashes)?;
+				let (tree, depth) =
+					to_tree_string_with_depth(&dag, id_candidate, ids_ignore)
+						.map_err(ScottError::Parse)?;
+				Ok((id_candidate.clone(), depth, tree))
+			})
+			.collect();
+		let mut output = Vec::with_capacity(results.len());
+		for item in results {
+			output.push(item?);
+		}
+		return Ok(output);
+	}
+	#[cfg(not(feature = "parallel"))]
+	{
+		let empty_ignore = HashSet::new();
+		let mut output = Vec::with_capacity(candidates.len());
+		for id_candidate in candidates {
+			let dag = to_dag_with_mode(graph, id_candidate, &empty_ignore, mode, allow_hashes)?;
+			let (tree, depth) =
+				to_tree_string_with_depth(&dag, id_candidate, ids_ignore)
+					.map_err(ScottError::Parse)?;
+			output.push((id_candidate.clone(), depth, tree));
+		}
+		Ok(output)
+	}
+}
+
+fn collect_best_tree(
+	graph: &GraphWrap,
+	elected: &[String],
+	mode: InboundMode,
+	allow_hashes: bool,
+) -> ScottResult<Option<String>> {
+	#[cfg(feature = "parallel")]
+	{
+		let empty_ignore = HashSet::new();
+		let results: Vec<ScottResult<String>> = elected
+			.par_iter()
+			.map(|id_candidate| {
+				let dag = to_dag_with_mode(graph, id_candidate, &empty_ignore, mode, allow_hashes)?;
+				let tree = to_tree_string(&dag, id_candidate, &empty_ignore)
+					.map_err(ScottError::Parse)?;
+				Ok(tree)
+			})
+			.collect();
+		let mut best_tree: Option<String> = None;
+		for item in results {
+			let tree = item?;
+			match best_tree {
+				Some(ref current) if tree < *current => best_tree = Some(tree),
+				None => best_tree = Some(tree),
+				_ => {}
+			}
+		}
+		return Ok(best_tree);
+	}
+	#[cfg(not(feature = "parallel"))]
+	{
+		let empty_ignore = HashSet::new();
+		let mut best_tree: Option<String> = None;
+		for id_candidate in elected {
+			let dag = to_dag_with_mode(graph, id_candidate, &empty_ignore, mode, allow_hashes)?;
+			let tree = to_tree_string(&dag, id_candidate, &empty_ignore)
+				.map_err(ScottError::Parse)?;
+			match best_tree {
+				Some(ref current) if tree < *current => best_tree = Some(tree),
+				None => best_tree = Some(tree),
+				_ => {}
+			}
+		}
+		Ok(best_tree)
+	}
 }
 
 fn prune_graph(graph: &mut GraphWrap, candidates: &[String]) -> HashSet<String> {
