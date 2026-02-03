@@ -43,11 +43,9 @@ pub fn to_dag_with_mode(
 	mode: InboundMode,
 	allow_hashes: bool,
 ) -> ScottResult<GraphWrap> {
-	let mut effective_ignore = ids_ignore.clone();
-	effective_ignore.remove(root_id);
 	let mut dag = graph.clone();
 	let floors = dag
-		.compute_floors(root_id, &effective_ignore)
+		.compute_floors(root_id, ids_ignore)
 		.map_err(ScottError::Parse)?;
 	remove_unfloored_nodes(&mut dag);
 	rewrite_bounds(&mut dag, &floors, mode, allow_hashes)?;
@@ -55,7 +53,7 @@ pub fn to_dag_with_mode(
 }
 
 fn remove_unfloored_nodes(graph: &mut GraphWrap) {
-	let mut to_remove = Vec::new();
+	let mut to_remove = Vec::with_capacity(graph.graph.node_count());
 	for node_index in graph.graph.node_indices() {
 		if graph.graph[node_index].meta.floor.is_none() {
 			to_remove.push(graph.graph[node_index].id.clone());
