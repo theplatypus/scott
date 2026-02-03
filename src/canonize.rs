@@ -83,7 +83,7 @@ pub fn to_cgraph(
 
 
 fn score_candidates(graph: &GraphWrap, rule: &str) -> ScottResult<Vec<(String, Vec<i32>)>> {
-	let mut scores = Vec::new();
+	let mut scores = Vec::with_capacity(graph.graph.node_count());
 	for node_index in graph.graph.node_indices() {
 		let id = graph.graph[node_index].id.clone();
 		let degree = graph.graph.neighbors(node_index).count() as i32;
@@ -102,7 +102,7 @@ fn score_candidates(graph: &GraphWrap, rule: &str) -> ScottResult<Vec<(String, V
 }
 
 fn select_candidates(scores: &[(String, Vec<i32>)]) -> Vec<String> {
-	let mut candidates = Vec::new();
+	let mut candidates = Vec::with_capacity(scores.len());
 	let mut max_score: Option<Vec<i32>> = None;
 	for (id, score) in scores {
 		match max_score {
@@ -125,7 +125,7 @@ fn select_candidates(scores: &[(String, Vec<i32>)]) -> Vec<String> {
 }
 
 fn prune_graph(graph: &mut GraphWrap, candidates: &[String]) -> HashSet<String> {
-	let mut candidates_set = HashSet::new();
+	let mut candidates_set = HashSet::with_capacity(candidates.len());
 	for id in candidates {
 		candidates_set.insert(id.clone());
 	}
@@ -143,7 +143,7 @@ fn prune_graph(graph: &mut GraphWrap, candidates: &[String]) -> HashSet<String> 
 			Some(index) => index,
 			None => continue,
 		};
-		let mut queue = VecDeque::new();
+		let mut queue = VecDeque::with_capacity(graph.graph.node_count());
 		queue.push_back((start_index, None, id_candidate.clone()));
 		while let Some((from, origin, msg)) = queue.pop_front() {
 			let neighbors: Vec<_> = graph.graph.neighbors(from).collect();
@@ -194,7 +194,7 @@ fn prune_graph(graph: &mut GraphWrap, candidates: &[String]) -> HashSet<String> 
 		}
 	}
 
-	let mut unmastered = HashSet::new();
+	let mut unmastered = HashSet::with_capacity(graph.graph.node_count());
 	for node_index in graph.graph.node_indices() {
 		let node = &graph.graph[node_index];
 		if node.meta.master.is_none() && !node.meta.master_attempts.is_empty() {

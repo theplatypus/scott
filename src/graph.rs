@@ -273,16 +273,13 @@ impl GraphWrap {
 		let root_index = self
 			.node_index(root_id)
 			.ok_or_else(|| format!("unknown root id '{}'", root_id))?;
-		if ids_ignore.contains(root_id) {
-			return Err("root id is ignored".to_string());
-		}
 
 		self.reset_floors();
 		let mut floors: HashMap<i32, Vec<NodeIndex>> = HashMap::new();
-		let mut queue: VecDeque<(NodeIndex, i32)> = VecDeque::new();
+		let mut queue: VecDeque<(NodeIndex, i32)> = VecDeque::with_capacity(self.graph.node_count());
 		queue.push_back((root_index, 0));
 
-		let mut seen: HashSet<NodeIndex> = HashSet::new();
+		let mut seen: HashSet<NodeIndex> = HashSet::with_capacity(self.graph.node_count());
 		seen.insert(root_index);
 
 		while let Some((node_index, depth)) = queue.pop_front() {
@@ -299,7 +296,7 @@ impl GraphWrap {
 					Some(node) => node.id.as_str(),
 					None => continue,
 				};
-				if ids_ignore.contains(neighbor_id) {
+				if neighbor_id != root_id && ids_ignore.contains(neighbor_id) {
 					continue;
 				}
 				seen.insert(neighbor);

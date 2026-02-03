@@ -54,12 +54,12 @@ fn to_tree_string_with_depth_order(
 	let root_index = graph
 		.node_index(root_id)
 		.ok_or_else(|| format!("unknown root id '{}'", root_id))?;
-	let mut effective_ignore = ids_ignore.clone();
-	effective_ignore.remove(root_id);
 
-	let mut visited: HashSet<NodeIndex> = HashSet::new();
-	let mut out: HashMap<NodeIndex, (String, i32)> = HashMap::new();
-	let mut stack: Vec<(NodeIndex, Option<NodeIndex>, bool, Vec<(usize, NodeIndex, String)>)> = Vec::new();
+	let node_count = graph.graph.node_count();
+	let mut visited: HashSet<NodeIndex> = HashSet::with_capacity(node_count);
+	let mut out: HashMap<NodeIndex, (String, i32)> = HashMap::with_capacity(node_count);
+	let mut stack: Vec<(NodeIndex, Option<NodeIndex>, bool, Vec<(usize, NodeIndex, String)>)> =
+		Vec::with_capacity(node_count);
 
 	stack.push((root_index, None, false, Vec::new()));
 
@@ -72,16 +72,15 @@ fn to_tree_string_with_depth_order(
 				continue;
 			}
 
-			let mut child_outputs: Vec<(usize, NodeIndex, String, i32, String)> = children
-				.iter()
-				.map(|(position, child_index, modality)| {
-					let (child_str, child_depth) = out
-						.get(child_index)
-						.cloned()
-						.unwrap_or_else(|| ("?".to_string(), 1));
-					(*position, *child_index, modality.clone(), child_depth, child_str)
-				})
-				.collect();
+			let mut child_outputs: Vec<(usize, NodeIndex, String, i32, String)> =
+				Vec::with_capacity(children.len());
+			for (position, child_index, modality) in &children {
+				let (child_str, child_depth) = match out.get(child_index) {
+					Some((value, depth)) => (value.clone(), *depth),
+					None => ("?".to_string(), 1),
+				};
+				child_outputs.push((*position, *child_index, modality.clone(), child_depth, child_str));
+			}
 			if include_modality {
 				child_outputs.sort_by(
 					|(a_pos, _a_idx, a_mod, a_depth, a_str),
@@ -138,7 +137,7 @@ fn to_tree_string_with_depth_order(
 				Some(node) => node.id.as_str(),
 				None => continue,
 			};
-			if effective_ignore.contains(neighbor_id) {
+			if neighbor_id != root_id && ids_ignore.contains(neighbor_id) {
 				continue;
 			}
 			if visited.contains(&neighbor) {
@@ -154,8 +153,12 @@ fn to_tree_string_with_depth_order(
 			children.push((position, neighbor, modality));
 		}
 
-		stack.push((node_index, parent, true, children.clone()));
-		for (_, child, _) in children.into_iter().rev() {
+		let mut child_nodes: Vec<NodeIndex> = Vec::with_capacity(children.len());
+		for (_, child, _) in &children {
+			child_nodes.push(*child);
+		}
+		stack.push((node_index, parent, true, children));
+		for child in child_nodes.into_iter().rev() {
 			stack.push((child, Some(node_index), false, Vec::new()));
 		}
 	}
