@@ -10,15 +10,14 @@ This repository summary aims to be synthetic and straight to the goal. For more 
   * [From source code](#from-source-code)
   * [From Pypi](#from-pypi)
   * [From Docker](#from-docker)
-- [Installation](#installation)
 - [Usage](#usage)
+  * [Build a Graph](#build-a-graph)
   * [Import Graphs](#import-graphs)
-  * [Canonical traces](#from-source-code)
+  * [Canonical traces](#canonical-traces)
   * [Canonical Adjacency Matrices](#canonical-adjacency-matrices)
 - [Testing](#testing)
 - [Citation](#citation)
 - [Licence](#licence)
-- [References](#references)
 
 ## Getting started 
 
@@ -38,12 +37,12 @@ uv venv
 source .venv/bin/activate
 uv pip install -e .
 
-# optional extras
-uv pip install -e '.[nx]'  # NetworkX backend + pydot
-uv pip install -e '.[py]'  # legacy pure-Python backend
-```
+# build the Rust extension (requires a Rust toolchain)
+uv run maturin develop --release
 
-Use `SCOTT_BACKEND=nx` or `SCOTT_BACKEND=legacy` to select the backend at runtime.
+# optional extras
+uv pip install -e '.[rdkit]'  # SMILES parsing via RDKit
+```
 
 Then you should be able to import `scott` package from python :
 
@@ -51,10 +50,10 @@ Then you should be able to import `scott` package from python :
 import scott as st
 ```
 
-To enable the Rust backend, build the extension once (CPython only):
+A pure-Python fallback backend is also available for environments where building the Rust extension is not possible:
 
 ```bash
-uv run maturin develop --release
+SCOTT_BACKEND=legacy python3 script.py
 ```
 
 ### From Pypi
@@ -63,13 +62,12 @@ uv run maturin develop --release
 pip install scott
 
 # optional extras
-pip install 'scott[nx]'
-pip install 'scott[py]'
+pip install 'scott[rdkit]'  # SMILES parsing
 ```
 
 Notes:
-- The Rust backend is the default when available and requires a Rust toolchain when building from source (CPython only).
-- Select backend at runtime via `SCOTT_BACKEND=legacy|nx|rs`.
+- The Rust backend is the default and requires a Rust toolchain when building from source (CPython only).
+- A pure-Python fallback is available via `SCOTT_BACKEND=legacy`.
 
 ### From Docker
 
@@ -157,20 +155,17 @@ Scott is also able to parse a few graph formats files. Note that a parsing funct
 ```python
 # Parse a .sdf file (chemical file standard) :
 
-# from blob...
-CAFEINE_URL = "https://drive.google.com/uc?id=1lXeFVGS77oK_qL3NESDV_UjJknPyiICx"
-file_content = urlopen(CAFEINE_URL).read().decode()
-
-compounds = st.parse.from_sdf(file_content, ignore_hydrogens = False)
+# from file path
+compounds = st.parse.from_sdf(file_path='./data/molecule/cafeine.sdf')
 cafeine = compounds[0]
 print(cafeine)
 
-# ... or from file path - note we ignore hydrogens this time
-compounds = st.parse.from_sdf(file_path='./data/molecule/cafeine.sdf', ignore_hydrogens = True)
-cafeine_without_H = compounds[0]
-print(cafeine_without_H)
+# ignore hydrogens
+compounds = st.parse.from_sdf(file_path='./data/molecule/simple.sdf', ignore_hydrogens=True)
+simple_without_H = compounds[0]
+print(simple_without_H)
 
-# Parse a SMILES string (RDKit required)
+# Parse a SMILES string (requires: pip install scott[rdkit])
 smile = st.parse.parse_smiles('CCOCOCC=CCONC')
 
 # we can iterate over graph vertices
@@ -178,10 +173,13 @@ for id_node in smile.V :
 	print("Node #%s : %s" % (str(id_node), str(smile.V[id_node].label)))
 
 # Parse a .dot file
-cfi1 = st.parse.from_dot(file_path = './data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0016-04-1.dot')[0]
+cfi1 = st.parse.from_dot(file_path='./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0016-04-1.dot')[0]
 
 # Parse a .dimacs file
-cfi2 = st.parse.from_dimacs(file_path = './data/isotest/cfi-rigid-t2/cfi-rigid-t2-0016-04-1')[0]
+cfi2 = st.parse.from_dimacs(file_path='./data/isotest/cfi-rigid-t2/cfi-rigid-t2-0016-04-1')[0]
+
+# Parse a PubChem XML file
+compounds = st.parse.from_pubchem_xml(file_path='./data/molecule/simple.xml')
 ```
 
 ### Canonical traces
@@ -233,12 +231,17 @@ assert str(Hc) != str(Fc)
 
 ### Canonical Adjacency Matrices
 
+> **Note:** Canonical adjacency matrices are available through the legacy pure-Python backend (`SCOTT_BACKEND=legacy`).
+
 On a graph `G` of `N` vertices, an adjacency matrix `A` is a `N*N` array describing the link between two vertices. `Scott` can help to get a standardized adjacency matrix, such as isomophic graph will have the exact same adjacency matrices, which can help learning process by bringing the "same elements towards the same neurons".
 
 ```python
+# Requires: SCOTT_BACKEND=legacy
+import scott_legacy as stl
+
 # Let g and h be two isomorphic graphs
-g = st.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-2.dot")[0]
-h = st.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-1.dot")[0]
+g = stl.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-2.dot")[0]
+h = stl.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-1.dot")[0]
 
 # if we compare their adjacency matrix, it is very unlikely to get the two exact same matrices,
 # as there is no order on vertices
@@ -246,22 +249,32 @@ g.adjacency_matrix() == h.adjacency_matrix()
 # False
 
 # but if we induce an order based on the representant tree given by scott,
-# there is only one canonical adjacecny matrix
+# there is only one canonical adjacency matrix
 assert g.adjacency_matrix(canonic = True) == h.adjacency_matrix(canonic = True)
-
 ```
 
 ## Testing
 
-Use the unified test runner to exercise the legacy (py), NetworkX (nx), and Rust (rs) implementations:
+```bash
+# run all tests
+python -m pytest test/pytest/ -v
+
+# run only unit tests
+python -m pytest test/pytest/ -v -m unit
+
+# run canonization benchmarks
+python -m pytest test/pytest/ -v -m canonization
+```
+
+You can also use the unified test runner for cross-engine comparison:
 
 ```bash
 python3 test/cli/test_runner.py --interactive
-python3 test/cli/test_runner.py validity --engine py
+python3 test/cli/test_runner.py validity --engine rs
 python3 test/cli/test_runner.py cfi-rigid --engine rs --release -n 30
 ```
 
-Results are written under `results/`. You can also switch the `scott` backend with `SCOTT_BACKEND=legacy|nx|rs`. For more detail, see `docs/Testing.md`.
+Results are written under `results/`. For more detail, see `docs/Testing.md`.
 
 ## Citation
 
