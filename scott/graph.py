@@ -24,7 +24,8 @@ class Edge:
 
 
 class Graph:
-	def __init__(self, rs_graph=None):
+	def __init__(self, rs_graph=None, id=""):
+		self.id = id
 		self._rs_graph = rs_graph
 		self.V = {}
 		self.E = {}
@@ -57,6 +58,11 @@ class Graph:
 
 	def add_edge(self, edge):
 		self.E[edge.id] = edge
+		self._rs_graph = None
+
+	def add_edges(self, edges):
+		for edge in edges:
+			self.E[edge.id] = edge
 		self._rs_graph = None
 
 	def as_rs(self):

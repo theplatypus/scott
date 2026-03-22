@@ -1,3 +1,5 @@
+"""Canonization shim: delegates to Rust or legacy Python backend."""
+
 from ._backend import resolve_backend
 from .graph import Graph
 
@@ -30,27 +32,15 @@ def to_cgraph(
 			compress=compress,
 			compact=compact,
 		)
-	if backend == "nx":
-		return module.to_cgraph(
-			graph,
-			candidate_rule=candidate_rule,
-			branch_rule=branch_rule,
-			allow_hashes=allow_hashes,
-			compress=compress,
-			compact=compact,
-		)
-	if backend == "rs":
-		graph = _as_rs_graph(graph, module)
-		return module.to_cgraph_py(
-			graph,
-			candidate_rule,
-			branch_rule,
-			allow_hashes,
-			compress,
-			compact,
-		)
-
-	raise ImportError("unknown backend '%s'" % backend)
+	graph = _as_rs_graph(graph, module)
+	return module.to_cgraph_py(
+		graph,
+		candidate_rule,
+		branch_rule,
+		allow_hashes,
+		compress,
+		compact,
+	)
 
 
 def scott_trace(
@@ -73,25 +63,12 @@ def scott_trace(
 			compress=compress,
 			compact=compact,
 		)
-	if backend == "nx":
-		return module.scott_trace(
-			graph,
-			delimiter=delimiter,
-			candidate_rule=candidate_rule,
-			branch_rule=branch_rule,
-			allow_hashes=allow_hashes,
-			compress=compress,
-			compact=compact,
-		)
-	if backend == "rs":
-		cgraph = to_cgraph(
-			graph,
-			candidate_rule=candidate_rule,
-			branch_rule=branch_rule,
-			allow_hashes=allow_hashes,
-			compress=compress,
-			compact=compact,
-		)
-		return str(cgraph)
-
-	raise ImportError("unknown backend '%s'" % backend)
+	cgraph = to_cgraph(
+		graph,
+		candidate_rule=candidate_rule,
+		branch_rule=branch_rule,
+		allow_hashes=allow_hashes,
+		compress=compress,
+		compact=compact,
+	)
+	return str(cgraph)

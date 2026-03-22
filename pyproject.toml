@@ -13,17 +13,12 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+rdkit = ["rdkit"]
+legacy = []
 dev = [
     "pytest>=7.4",
     "ruff>=0.5",
-    "networkx>=3.0",
-    "pydot>=1.4",
 ]
-nx = [
-    "networkx>=3.0",
-    "pydot>=1.4",
-]
-py = []
 
 [project.scripts]
 test = "scott.tools:test"
@@ -36,7 +31,7 @@ format = "scott.tools:format"
 module-name = "scott._scott"
 python-source = "."
 features = ["python"]
-include = ["scott-nx/**"]
+
 
 [tool.pytest.ini_options]
 testpaths = ["test/pytest"]

@@ -12,15 +12,6 @@ def test_cfi_rigid_legacy():
 	assert run_cfi_rigid_py("py", max_n=max_n)
 
 
-@pytest.mark.canonization
-def test_cfi_rigid_nx():
-	try:
-		import networkx  # noqa: F401
-	except Exception:
-		pytest.skip("networkx not available")
-	max_n = int(os.getenv("SCOTT_TEST_CFI_N", "16"))
-	assert run_cfi_rigid_py("nx", max_n=max_n)
-
 
 @pytest.mark.canonization
 def test_cfi_rigid_rs():
