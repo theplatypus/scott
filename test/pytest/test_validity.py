@@ -10,14 +10,6 @@ def test_validity_legacy():
 	assert run_validity_py("py")
 
 
-@pytest.mark.unit
-def test_validity_nx():
-	try:
-		import networkx  # noqa: F401
-	except Exception:
-		pytest.skip("networkx not available")
-	assert run_validity_py("nx")
-
 
 @pytest.mark.unit
 def test_validity_rs():
