@@ -114,16 +114,6 @@ docker run -it --rm -p 8888:8888 scott:debian
 # > jupyter notebook --notebook-dir=/opt/notebooks --ip='*' --port=8888 --no-browser --allow-root
 ```
 
-#### PySpark
-
-An image designed to run inside a [Spark](https://spark.apache.org/) cluster. 
-
-```bash
-docker build -t scott:spark -f dockerfiles/pyspark/Dockerfile .
-
-docker run -it -v $(pwd):/home/scott scott:spark pyspark --master local[*]
-```
-
 ---
 
 ## Usage
