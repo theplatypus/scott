@@ -71,45 +71,35 @@ Notes:
 
 ### From Docker
 
-To get `scott` in an environment with additional dependencies installed (chemical librabries, jupyter notebooks,etc.), a Docker container is available :
+The default image is based on `python:latest`, builds the Rust extension, and installs all extras (rdkit, dev tools):
 
 ```bash
-# Build the image containing all the stuff for a simple standalone install
+# Build the default image (CPython + Rust backend)
 docker build -t scott .
-# or pull it
-docker pull docker.pkg.github.com/theplatypus/scott/scott:latest
 
-# run an interactive shell, where you can import scott in python default interpreter
+# Run an interactive shell
 docker run --rm -it scott
-
-# or run a jupyter notebook including scott
-docker run -it -p 8888:8888 scott /bin/bash -c "jupyter notebook --notebook-dir=/opt/notebooks --ip='*' --port=8888 --no-browser --allow-root"
 ```
 
-For specific uses, you have access to alternative `Dockerfiles` in `/dockerfiles`, each of them being a tag that you can also pull.
+Alternative Dockerfiles are available under `dockerfiles/`. PyPy images use the pure-Python legacy backend (`SCOTT_BACKEND=legacy`) since PyPy cannot build PyO3 extensions.
 
-#### Pypy 
+#### PyPy (standalone)
 
-An image including the [Pypy](https://pypy.org/) interpreter, a high-performance alternative to the classic CPython. Use it with `ipython` or launch a jupyter server.
+A [PyPy](https://pypy.org/)-based image with `ipython`. Useful for benchmarking the legacy backend on a JIT interpreter.
 
 ```bash
 docker build -t scott:pypy -f dockerfiles/pypy/Dockerfile .
-docker run -it --rm -p 8888:8888 scott:pypy
-
-# > ipython 
-# > jupyter notebook --notebook-dir=/opt/notebooks --ip='*' --port=8888 --no-browser --allow-root
+docker run --rm -it scott:pypy
+# > ipython
 ```
 
-#### Debian 
+#### PyPy (Jupyter)
 
-A debian-based image, if you are not an Anaconda supporter.
+Same as above, with a Jupyter notebook server.
 
 ```bash
-docker build -t scott:debian -f dockerfiles/debian/Dockerfile .
-docker run -it --rm -p 8888:8888 scott:debian
-
-# > ipython 
-# > jupyter notebook --notebook-dir=/opt/notebooks --ip='*' --port=8888 --no-browser --allow-root
+docker build -t scott:pypy-jupyter -f dockerfiles/pypy-jupyter/Dockerfile .
+docker run --rm -it -p 8888:8888 scott:pypy-jupyter
 ```
 
 ---

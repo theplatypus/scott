@@ -23,7 +23,7 @@ uv run maturin develop --release             # build Rust extension for Python
 
 ### Testing
 ```bash
-# Unified test runner (supports engines: py, nx, rs)
+# Unified test runner (supports engines: py, rs)
 python3 test/cli/test_runner.py --interactive
 python3 test/cli/test_runner.py validity --engine rs
 python3 test/cli/test_runner.py cfi-rigid --engine rs -n 30 --release
@@ -41,12 +41,19 @@ uv run format
 
 ### Backend selection at runtime
 ```bash
-SCOTT_BACKEND=rs|legacy|nx python3 script.py
+SCOTT_BACKEND=legacy python3 script.py   # pure-Python fallback
+```
+
+### Docker
+```bash
+docker build -t scott .                                              # default (CPython + Rust)
+docker build -t scott:pypy -f dockerfiles/pypy/Dockerfile .          # PyPy standalone (legacy backend)
+docker build -t scott:pypy-jupyter -f dockerfiles/pypy-jupyter/Dockerfile .  # PyPy + Jupyter
 ```
 
 ## Architecture
 
-Three implementations exist in parallel: Rust core (`src/`), legacy Python (`scott_legacy/`), and NetworkX-based (`scott-nx/`). The Python shim (`scott/`) auto-detects the best available backend (priority: Rust > legacy > NetworkX), overridable via `SCOTT_BACKEND`.
+Two backends: Rust core (`src/`, default) and legacy Python (`scott_legacy/`, fallback). The Python package (`scott/`) auto-detects the Rust extension; if unavailable and `SCOTT_BACKEND=legacy` is set, falls back to the pure-Python implementation. Format parsers (`scott/parse.py`) produce `scott.graph.Graph` objects that bridge transparently to Rust via `graph_from_edges()`.
 
 ### Rust core (`src/`) — the primary implementation
 
