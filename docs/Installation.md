@@ -1,7 +1,7 @@
 # Installation
 
-Scott ships a Rust backend by default when the extension is available, with optional
-NetworkX and legacy pure-Python backends.
+Scott ships a Rust backend by default (CPython only). A pure-Python legacy backend
+is available as a fallback via `SCOTT_BACKEND=legacy`.
 
 ## From PyPI
 
@@ -9,13 +9,11 @@ NetworkX and legacy pure-Python backends.
 pip install scott
 
 # optional extras
-pip install 'scott[nx]'  # NetworkX backend + pydot
-pip install 'scott[py]'  # legacy pure-Python backend
+pip install 'scott[rdkit]'  # SMILES parsing via RDKit
+pip install 'scott[nx]'     # NetworkX graph conversion
 ```
 
-Use `SCOTT_BACKEND=nx` or `SCOTT_BACKEND=legacy` to select the backend at runtime.
-
-To use the Rust backend from source installs, build the extension once (CPython only):
+To use the Rust backend from source installs, build the extension once:
 
 ```bash
 maturin develop --release
@@ -28,34 +26,44 @@ maturin develop --release
 git clone https://github.com/theplatypus/scott.git
 cd scott
 
-# install editable (uv)
+# create a virtualenv and install editable (uv)
 uv venv
+source .venv/bin/activate
 uv pip install -e .
 
+# build the Rust extension
+uv run maturin develop --release
+
 # optional extras
+uv pip install -e '.[rdkit]'
 uv pip install -e '.[nx]'
-uv pip install -e '.[py]'
+uv pip install -e '.[dev]'   # pytest, ruff
 ```
 
 If you are not using uv, you can use pip directly:
 
 ```bash
 python -m pip install -e .
+python -m pip install -e '.[rdkit]'
 python -m pip install -e '.[nx]'
-python -m pip install -e '.[py]'
 ```
 
-To enable the Rust backend locally:
+## Building wheels locally
 
 ```bash
-uv run maturin develop --release
+# build a wheel for the current platform into dist/
+maturin build --release --out dist
 ```
 
 ## Backend selection
 
-The Rust backend is the default when the extension is available. Select a backend
-at runtime using the `SCOTT_BACKEND` environment variable:
+The Rust backend is the default and requires a Rust toolchain when building from
+source. If the Rust extension is not available, scott will raise an `ImportError`
+with build instructions.
 
-- `SCOTT_BACKEND=legacy`
-- `SCOTT_BACKEND=nx`
-- `SCOTT_BACKEND=rs`
+A pure-Python fallback is available for environments where building the extension
+is not possible (e.g. PyPy):
+
+```bash
+SCOTT_BACKEND=legacy python3 script.py
+```
