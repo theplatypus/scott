@@ -4,7 +4,6 @@
 import contextlib
 import csv
 import difflib
-import importlib.util
 import io
 import json
 import os
@@ -31,32 +30,9 @@ def resolve_engine(engine):
 	engine = (engine or "").strip().lower()
 	if engine in ("py", "legacy", "scott-legacy", "scott_legacy"):
 		return "py"
-	if engine in ("nx", "scott-nx", "scott_nx"):
-		return "nx"
 	if engine in ("rs", "rust"):
 		return "rs"
 	raise EngineError("unknown engine: %s" % engine)
-
-
-def load_scott_nx():
-	module_name = "scott_nx"
-	if module_name in sys.modules:
-		return sys.modules[module_name]
-	module_path = os.path.join(REPO_ROOT, "scott-nx", "__init__.py")
-	if not os.path.isfile(module_path):
-		raise EngineError("missing scott-nx package at %s" % module_path)
-	module_dir = os.path.dirname(module_path)
-	spec = importlib.util.spec_from_file_location(
-		module_name,
-		module_path,
-		submodule_search_locations=[module_dir],
-	)
-	if spec is None or spec.loader is None:
-		raise EngineError("failed to load scott-nx module")
-	module = importlib.util.module_from_spec(spec)
-	sys.modules[module_name] = module
-	spec.loader.exec_module(module)
-	return module
 
 
 def load_engine(engine):
@@ -75,29 +51,6 @@ def load_engine(engine):
 
 		return {
 			"name": "py",
-			"parse_graph": parse_graph,
-			"to_cgraph": to_cgraph,
-			"count_nodes_edges": count_nodes_edges,
-		}
-
-	if engine == "nx":
-		try:
-			import networkx as nx
-		except Exception as exc:
-			raise EngineError("networkx is required for scott-nx: %s" % exc)
-		module = load_scott_nx()
-
-		def parse_graph(path):
-			return nx.Graph(nx.nx_pydot.read_dot(path))
-
-		def to_cgraph(graph):
-			return str(module.to_cgraph(graph))
-
-		def count_nodes_edges(graph):
-			return graph.number_of_nodes(), graph.number_of_edges()
-
-		return {
-			"name": "nx",
 			"parse_graph": parse_graph,
 			"to_cgraph": to_cgraph,
 			"count_nodes_edges": count_nodes_edges,
