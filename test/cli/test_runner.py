@@ -69,7 +69,8 @@ def build_parser():
 	traces = subparsers.add_parser("compare-traces", help="Compare trace output.")
 	traces.add_argument("--left", required=True, help="Left engine: py (legacy), rs.")
 	traces.add_argument("--right", required=True, help="Right engine: py (legacy), rs.")
-	traces.add_argument("--dot", required=True, help="DOT file path to compare.")
+	default_dot = os.path.join("data", "isotest", "cfi-rigid-t2-dot", "cfi-rigid-t2-0016-04-1.dot")
+	traces.add_argument("--dot", default=default_dot, help="DOT file path to compare (default: %s)." % default_dot)
 	traces.add_argument(
 		"--raw",
 		action="store_true",
@@ -105,7 +106,8 @@ def run_interactive():
 	if choice == "3":
 		left = input("Left engine [py|rs]: ").strip()
 		right = input("Right engine [py|rs]: ").strip()
-		dot_path = input("DOT file path: ").strip()
+		default_dot = os.path.join("data", "isotest", "cfi-rigid-t2-dot", "cfi-rigid-t2-0016-04-1.dot")
+		dot_path = input("DOT file path (blank for %s): " % default_dot).strip() or default_dot
 		normalized = input("Normalize diff? [Y/n]: ").strip().lower() != "n"
 		release = input("Use release build for Rust? [y/N]: ").strip().lower() == "y"
 		return run_compare_traces(left, right, dot_path, release, normalized)
