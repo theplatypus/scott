@@ -21,7 +21,7 @@ RUN uv venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
-RUN uv pip install -e '.[rdkit,dev]'
+RUN uv pip install -e '.[rdkit,dev,nx]'
 RUN maturin develop --release
 
 # Workspace

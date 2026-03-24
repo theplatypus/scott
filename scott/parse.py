@@ -1,4 +1,4 @@
-"""Graph format parsers (DOT, DIMACS, SDF, SMILES, PubChem XML)."""
+"""Graph format parsers (DOT, DIMACS, SDF, SMILES, PubChem XML, NetworkX)."""
 
 import gzip
 import re
@@ -343,3 +343,37 @@ def map_pubchem_xml(xml_content=None, file_path=None,
 		return compound_gen()
 
 	return [_parse_compound(el) for el in ET.XML(xml_content)]
+
+
+# ---------------------------------------------------------------------------
+#  NetworkX
+# ---------------------------------------------------------------------------
+
+def from_networkx(nx_graph):
+	"""Convert a networkx.Graph into a scott Graph.
+
+	Requires: pip install scott[nx]
+
+	Node labels are read from the ``label`` attribute (default: ``""``).
+	Edge modalities are read from the ``weight`` attribute (default: ``"1"``).
+	"""
+	try:
+		import networkx as nx
+	except ImportError:
+		raise ImportError(
+			"networkx is required for from_networkx(). "
+			"Install it with: pip install scott[nx]"
+		)
+	if not isinstance(nx_graph, nx.Graph):
+		raise TypeError("expected a networkx.Graph, got %s" % type(nx_graph).__name__)
+
+	graph = Graph()
+	for node_id, data in nx_graph.nodes(data=True):
+		label = str(data.get("label", ""))
+		graph.add_node(Node(str(node_id), label))
+
+	for i, (u, v, data) in enumerate(nx_graph.edges(data=True), 1):
+		mod = str(data.get("weight", "1"))
+		graph.add_edge(Edge(i, graph.V[str(u)], graph.V[str(v)], mod))
+
+	return graph
