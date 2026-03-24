@@ -34,8 +34,8 @@ def build_parser():
 	validity = subparsers.add_parser("validity", help="Run validity checks.")
 	validity.add_argument(
 		"--engine",
-		default="py",
-		help="Engine: py (legacy), nx, rs (default: py).",
+		default="rs",
+		help="Engine: py (legacy), rs (default: rs).",
 	)
 	validity.add_argument(
 		"--release",
@@ -46,8 +46,8 @@ def build_parser():
 	cfi = subparsers.add_parser("cfi-rigid", help="Run cfi-rigid benchmark.")
 	cfi.add_argument(
 		"--engine",
-		default="py",
-		help="Engine: py (legacy), nx, rs (default: py).",
+		default="rs",
+		help="Engine: py (legacy), rs (default: rs).",
 	)
 	cfi.add_argument(
 		"-n",
@@ -67,8 +67,8 @@ def build_parser():
 	)
 
 	traces = subparsers.add_parser("compare-traces", help="Compare trace output.")
-	traces.add_argument("--left", required=True, help="Left engine: py, nx, rs.")
-	traces.add_argument("--right", required=True, help="Right engine: py, nx, rs.")
+	traces.add_argument("--left", required=True, help="Left engine: py (legacy), rs.")
+	traces.add_argument("--right", required=True, help="Right engine: py (legacy), rs.")
 	traces.add_argument("--dot", required=True, help="DOT file path to compare.")
 	traces.add_argument(
 		"--raw",
@@ -92,19 +92,19 @@ def run_interactive():
 	print("  4) quit")
 	choice = input("Choice: ").strip()
 	if choice == "1":
-		engine = input("Engine [py|nx|rs] (default: py): ").strip() or "py"
+		engine = input("Engine [py|rs] (default: rs): ").strip() or "rs"
 		release = input("Use release build for Rust? [y/N]: ").strip().lower() == "y"
 		return run_validity(engine, release)
 	if choice == "2":
-		engine = input("Engine [py|nx|rs] (default: py): ").strip() or "py"
+		engine = input("Engine [py|rs] (default: rs): ").strip() or "rs"
 		limit = input("Max |V| (blank for all): ").strip()
 		max_n = int(limit) if limit else None
 		out_path = input("Output CSV (blank for default): ").strip() or None
 		release = input("Use release build for Rust? [y/N]: ").strip().lower() == "y"
 		return run_cfi_rigid(engine, max_n, out_path, release)
 	if choice == "3":
-		left = input("Left engine [py|nx|rs]: ").strip()
-		right = input("Right engine [py|nx|rs]: ").strip()
+		left = input("Left engine [py|rs]: ").strip()
+		right = input("Right engine [py|rs]: ").strip()
 		dot_path = input("DOT file path: ").strip()
 		normalized = input("Normalize diff? [Y/n]: ").strip().lower() != "n"
 		release = input("Use release build for Rust? [y/N]: ").strip().lower() == "y"
