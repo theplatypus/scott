@@ -19,6 +19,7 @@ cargo build --features parallel --release   # with rayon parallelism
 uv venv && source .venv/bin/activate
 uv pip install -e .
 uv run maturin develop --release             # build Rust extension for Python
+maturin build --release --out dist           # build distributable wheel into dist/
 ```
 
 ### Testing
