@@ -81,9 +81,20 @@ docker build -t scott .
 docker run --rm -it scott
 ```
 
-Alternative Dockerfiles are available under `dockerfiles/`. PyPy images use the pure-Python legacy backend (`SCOTT_BACKEND=legacy`) since PyPy cannot build PyO3 extensions.
+Alternative Dockerfiles are available under `dockerfiles/`.
+
+#### Jupyter
+
+CPython + Rust backend with a Jupyter notebook server.
+
+```bash
+docker build -t scott:jupyter -f dockerfiles/jupyter/Dockerfile .
+docker run --rm -it -p 8888:8888 scott:jupyter
+```
 
 #### PyPy (standalone)
+
+PyPy images use the pure-Python legacy backend (`SCOTT_BACKEND=legacy`) since PyPy cannot build PyO3 extensions.
 
 A [PyPy](https://pypy.org/)-based image with `ipython`. Useful for benchmarking the legacy backend on a JIT interpreter.
 
