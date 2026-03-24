@@ -4,7 +4,7 @@ use crate::cgraph::CGraph;
 use crate::dag::{to_dag_with_mode, InboundMode};
 use crate::error::{ScottError, ScottResult};
 use crate::graph::{Graph, GraphWrap};
-use crate::tree::{to_tree_string, to_tree_string_with_depth};
+use crate::tree::{to_tree_node_order, to_tree_string, to_tree_string_with_depth};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -335,6 +335,85 @@ fn compress_cgraph(cgraph: &str) -> String {
 	}
 
 	output
+}
+
+pub fn canonical_node_order(
+	_graph: &Graph,
+	_candidate_rule: &str,
+	_branch_rule: &str,
+	_allow_hashes: bool,
+	_compact: bool,
+) -> ScottResult<Vec<String>> {
+	let mut graph = _graph.as_wrap().clone();
+	if graph.graph.node_count() == 0 {
+		return Ok(Vec::new());
+	}
+
+	let candidate_scores = score_candidates(&graph, _candidate_rule)?;
+	let candidates = select_candidates(&candidate_scores);
+	let unmastered = prune_graph(&mut graph, &candidates);
+
+	let ids_ignore = if candidates.iter().all(|id| is_leaf(&graph, id)) {
+		HashSet::new()
+	} else {
+		unmastered
+	};
+
+	let mode = if _compact {
+		InboundMode::Elect
+	} else {
+		InboundMode::Duplicate
+	};
+
+	let candidate_results = collect_candidate_scores(
+		&graph,
+		&candidates,
+		&ids_ignore,
+		mode,
+		_allow_hashes,
+	)?;
+	let mut elected = Vec::new();
+	let mut max_score: Option<(i32, String)> = None;
+	for (id_candidate, depth, tree) in candidate_results {
+		let score = (depth, tree.clone());
+		match max_score {
+			Some(ref best) if score == *best => {
+				elected.push(id_candidate);
+			}
+			Some(ref best) if score > *best => {
+				max_score = Some(score);
+				elected.clear();
+				elected.push(id_candidate);
+			}
+			None => {
+				max_score = Some(score);
+				elected.push(id_candidate);
+			}
+			_ => {}
+		}
+	}
+
+	// Pick the best elected candidate (same logic as collect_best_tree)
+	let empty_ignore = HashSet::new();
+	let mut best: Option<(String, Vec<String>)> = None;
+	for id_candidate in &elected {
+		let dag = to_dag_with_mode(&graph, id_candidate, &empty_ignore, mode, _allow_hashes)?;
+		let tree = to_tree_string(&dag, id_candidate, &empty_ignore)
+			.map_err(ScottError::Parse)?;
+		let order = to_tree_node_order(&dag, id_candidate, &empty_ignore)
+			.map_err(ScottError::Parse)?;
+		match best {
+			Some((ref current_tree, _)) if tree < *current_tree => {
+				best = Some((tree, order));
+			}
+			None => {
+				best = Some((tree, order));
+			}
+			_ => {}
+		}
+	}
+
+	Ok(best.map(|(_, order)| order).unwrap_or_default())
 }
 
 pub fn is_isomorphic(

@@ -2,7 +2,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
-use crate::canonize::to_cgraph;
+use crate::canonize::{canonical_node_order, to_cgraph};
 use crate::graph::Graph;
 use crate::parse::{from_dot, from_dot_str};
 
@@ -128,6 +128,32 @@ fn to_cgraph_py(
 	})
 }
 
+#[pyfunction]
+#[pyo3(signature = (graph, candidate_rule=None, branch_rule=None, allow_hashes=None, compact=None))]
+fn canonical_node_order_py(
+	graph: &PyGraph,
+	candidate_rule: Option<&str>,
+	branch_rule: Option<&str>,
+	allow_hashes: Option<bool>,
+	compact: Option<bool>,
+) -> PyResult<Vec<String>> {
+	let candidate_rule = candidate_rule.unwrap_or("$degree");
+	let branch_rule = branch_rule.unwrap_or("$depth > tree.parent_modality > $lexic");
+	let allow_hashes = allow_hashes.unwrap_or(true);
+	let compact = compact.unwrap_or(false);
+
+	let order = canonical_node_order(
+		&graph.inner,
+		candidate_rule,
+		branch_rule,
+		allow_hashes,
+		compact,
+	)
+	.map_err(map_err)?;
+
+	Ok(order)
+}
+
 pub fn init_module(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_class::<PyGraph>()?;
 	m.add_class::<PyCGraph>()?;
@@ -135,5 +161,6 @@ pub fn init_module(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(parse_dot_string, m)?)?;
 	m.add_function(wrap_pyfunction!(graph_from_edges, m)?)?;
 	m.add_function(wrap_pyfunction!(to_cgraph_py, m)?)?;
+	m.add_function(wrap_pyfunction!(canonical_node_order_py, m)?)?;
 	Ok(())
 }
