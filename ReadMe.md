@@ -231,17 +231,14 @@ assert str(Hc) != str(Fc)
 
 ### Canonical Adjacency Matrices
 
-> **Note:** Canonical adjacency matrices are available through the legacy pure-Python backend (`SCOTT_BACKEND=legacy`).
-
 On a graph `G` of `N` vertices, an adjacency matrix `A` is a `N*N` array describing the link between two vertices. `Scott` can help to get a standardized adjacency matrix, such as isomophic graph will have the exact same adjacency matrices, which can help learning process by bringing the "same elements towards the same neurons".
 
 ```python
-# Requires: SCOTT_BACKEND=legacy
-import scott_legacy as stl
+import scott as st
 
 # Let g and h be two isomorphic graphs
-g = stl.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-2.dot")[0]
-h = stl.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-1.dot")[0]
+g = st.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-2.dot")[0]
+h = st.parse.from_dot(file_path="./data/isotest/cfi-rigid-t2-dot/cfi-rigid-t2-0020-02-1.dot")[0]
 
 # if we compare their adjacency matrix, it is very unlikely to get the two exact same matrices,
 # as there is no order on vertices
@@ -250,7 +247,7 @@ g.adjacency_matrix() == h.adjacency_matrix()
 
 # but if we induce an order based on the representant tree given by scott,
 # there is only one canonical adjacency matrix
-assert g.adjacency_matrix(canonic = True) == h.adjacency_matrix(canonic = True)
+assert g.adjacency_matrix(canonic=True) == h.adjacency_matrix(canonic=True)
 ```
 
 ## Testing

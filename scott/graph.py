@@ -70,5 +70,65 @@ class Graph:
 			self._build_rs_graph()
 		return self._rs_graph
 
+	def adjacency_matrix(self, canonic=False):
+		"""Return the adjacency matrix as a list of lists.
+
+		If *canonic* is True, the node ordering is derived from the
+		canonical tree so that isomorphic graphs produce identical matrices.
+		"""
+		N = len(self.V)
+
+		if canonic:
+			from ._backend import resolve_backend
+			_, module = resolve_backend()
+			rs_graph = self.as_rs()
+			node_order = module.canonical_node_order_py(rs_graph)
+		else:
+			node_order = sorted(self.V.keys())
+
+		A = [[0] * N for _ in range(N)]
+		for edge in self.E.values():
+			i = node_order.index(self.V[edge.id_a].id)
+			j = node_order.index(self.V[edge.id_b].id)
+			mod = _str_to_int(edge.modality)
+			A[i][j] = mod
+			A[j][i] = mod
+
+		if canonic:
+			A = _stabilize_matrix(A)
+		return A
+
 	def __repr__(self):
 		return "Graph(nodes=%d, edges=%d)" % (len(self.V), len(self.E))
+
+
+def _str_to_int(val):
+	try:
+		return int(val)
+	except (ValueError, TypeError):
+		return sum(ord(c) for c in str(val))
+
+
+def _stabilize_matrix(A):
+	"""Resolve remaining ties in the canonical adjacency matrix.
+
+	Groups of rows with identical patterns are sorted lexicographically
+	so that structurally equivalent nodes always get the same position.
+	"""
+	N = len(A)
+	# Build a sortable key per row: the row itself as a tuple
+	indexed = list(range(N))
+	# Iteratively refine: sort rows by their pattern, apply the permutation
+	# to both rows and columns, repeat until stable.
+	for _ in range(N):
+		keys = [tuple(A[i]) for i in range(N)]
+		perm = sorted(range(N), key=lambda i: keys[i])
+		if perm == indexed:
+			break
+		# Apply permutation to rows and columns
+		B = [[0] * N for _ in range(N)]
+		for new_i, old_i in enumerate(perm):
+			for new_j, old_j in enumerate(perm):
+				B[new_i][new_j] = A[old_i][old_j]
+		A = B
+	return A
