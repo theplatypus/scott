@@ -14,6 +14,24 @@ def _as_rs_graph(graph, module):
 	return graph
 
 
+def _as_legacy_graph(graph):
+	"""Convert a scott.graph.Graph to a scott_legacy Graph."""
+	if not isinstance(graph, Graph):
+		return graph
+	from scott_legacy.structs.graph import Graph as LegacyGraph
+	from scott_legacy.structs.node import Node as LegacyNode
+	from scott_legacy.structs.edge import Edge as LegacyEdge
+
+	lg = LegacyGraph(graph.id)
+	for node in graph.V.values():
+		lg.add_node(LegacyNode(node.id, node.label))
+	for edge in graph.E.values():
+		a = lg.V[edge.id_a]
+		b = lg.V[edge.id_b]
+		lg.add_edge(LegacyEdge(edge.id, a, b, modality=str(edge.modality)))
+	return lg
+
+
 def to_cgraph(
 	graph,
 	candidate_rule="$degree",
@@ -25,7 +43,7 @@ def to_cgraph(
 	backend, module = resolve_backend()
 	if backend == "py":
 		return module.canonize.to_cgraph(
-			graph,
+			_as_legacy_graph(graph),
 			candidate_rule=candidate_rule,
 			branch_rule=branch_rule,
 			allow_hashes=allow_hashes,
@@ -55,7 +73,7 @@ def scott_trace(
 	backend, module = resolve_backend()
 	if backend == "py":
 		return module.canonize.scott_trace(
-			graph,
+			_as_legacy_graph(graph),
 			delimiter=delimiter,
 			candidate_rule=candidate_rule,
 			branch_rule=branch_rule,
