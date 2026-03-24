@@ -108,3 +108,31 @@ def test_parse_dot_python():
 	assert len(g.E) == 1
 	assert g.V["1"].label == "A"
 	assert g.V["2"].label == "B"
+
+
+@pytest.mark.unit
+def test_from_networkx():
+	"""Test converting a networkx.Graph to a scott Graph."""
+	nx = pytest.importorskip("networkx")
+	from scott.parse import from_networkx
+
+	nxg = nx.Graph()
+	nxg.add_node("a", label="C")
+	nxg.add_node("b", label="O")
+	nxg.add_node("c", label="H")
+	nxg.add_edge("a", "b", weight=2)
+	nxg.add_edge("a", "c")
+
+	g = from_networkx(nxg)
+	assert len(g.V) == 3
+	assert len(g.E) == 2
+	assert g.V["a"].label == "C"
+	assert g.V["b"].label == "O"
+	assert g.V["c"].label == "H"
+	# check modalities
+	mods = sorted(e.modality for e in g.E.values())
+	assert mods == ["1", "2"]
+	# should be canonizable
+	import scott
+	trace = str(scott.canonize.to_cgraph(g))
+	assert len(trace) > 0

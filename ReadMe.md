@@ -181,6 +181,16 @@ cfi2 = st.parse.from_dimacs(file_path='./data/isotest/cfi-rigid-t2/cfi-rigid-t2-
 
 # Parse a PubChem XML file
 compounds = st.parse.from_pubchem_xml(file_path='./data/molecule/simple.xml')
+
+# Convert a NetworkX graph (requires: pip install scott[nx])
+import networkx as nx
+nxg = nx.Graph()
+nxg.add_node("a", label="C")
+nxg.add_node("b", label="O")
+nxg.add_edge("a", "b", weight=2)
+g = st.parse.from_networkx(nxg)
+
+G = st.parse.from_networkx(nx.random_geometric_graph(200, 0.125, seed=896803))
 ```
 
 ### Canonical traces
