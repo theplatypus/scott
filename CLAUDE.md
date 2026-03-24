@@ -47,6 +47,7 @@ SCOTT_BACKEND=legacy python3 script.py   # pure-Python fallback
 ### Docker
 ```bash
 docker build -t scott .                                              # default (CPython + Rust)
+docker build -t scott:jupyter -f dockerfiles/jupyter/Dockerfile .    # CPython + Rust + Jupyter
 docker build -t scott:pypy -f dockerfiles/pypy/Dockerfile .          # PyPy standalone (legacy backend)
 docker build -t scott:pypy-jupyter -f dockerfiles/pypy-jupyter/Dockerfile .  # PyPy + Jupyter
 ```
