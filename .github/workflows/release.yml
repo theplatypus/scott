@@ -59,7 +59,7 @@ jobs:
           command: build
           target: ${{ matrix.target }}
           manylinux: auto
-          args: --release --out dist -i python3.10
+          args: --release --out dist
 
       - name: Build wheel
         if: ${{ !matrix.use_manylinux }}
