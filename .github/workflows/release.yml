@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build-wheels:
@@ -143,3 +144,18 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build-wheels, build-sdist, test-wheel]
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
