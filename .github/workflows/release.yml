@@ -122,7 +122,7 @@ jobs:
       - name: Install wheel + test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --no-index --find-links wheelhouse scott
+          python -m pip install --no-index --find-links wheelhouse scott-trace
           python -m pip install pytest
 
       - name: Run unit tests
