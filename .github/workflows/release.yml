@@ -107,6 +107,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: repo
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -125,8 +127,13 @@ jobs:
           python -m pip install --no-index --find-links wheelhouse scott-trace
           python -m pip install pytest
 
+      - name: Remove source package (prevent shadowing installed wheel)
+        run: rm -rf scott/
+        working-directory: ${{ github.workspace }}/repo
+
       - name: Run unit tests
-        run: pytest test/pytest/ -v -m unit
+        run: python -m pytest test/pytest/ -v -m unit
+        working-directory: ${{ github.workspace }}/repo
 
   release:
     name: GitHub Release
