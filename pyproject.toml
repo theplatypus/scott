@@ -3,7 +3,7 @@ requires = ["maturin>=1.11,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "scott"
+name = "scott-trace"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Rust",
