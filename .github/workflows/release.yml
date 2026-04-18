@@ -146,10 +146,10 @@ jobs:
           generate_release_notes: true
 
   publish-pypi:
-    name: Publish to PyPI
+    name: Publish to TestPyPI
     needs: [build-wheels, build-sdist, test-wheel]
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: testpypi
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -157,5 +157,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Publish to PyPI
+      - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
