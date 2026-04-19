@@ -151,10 +151,12 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   publish-pypi:
     name: Publish to PyPI
     needs: [build-wheels, build-sdist, test-wheel]
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     environment: pypi
     steps:
@@ -166,3 +168,21 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: [build-wheels, build-sdist, test-wheel]
+    if: ${{ contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    environment: testpypi
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
