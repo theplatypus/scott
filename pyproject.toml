@@ -5,6 +5,7 @@ build-backend = "maturin"
 [project]
 name = "scott-trace"
 requires-python = ">=3.8"
+readme = "README.md"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
