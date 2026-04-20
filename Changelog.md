@@ -2,7 +2,14 @@
 
 
 ---
-## [unreleased]
+## [1.1.1] - 2026-04-20
+
+### ⚙️  Miscellaneous Tasks
+
+- [chore] bump version
+
+---
+## [1.1.0] - 2026-04-20
 
 ### ✨ Enhancements
 
@@ -16,6 +23,7 @@
 ### ⚙️  Miscellaneous Tasks
 
 - [chore] init git cliff
+- [chore] Changelog
 
 ### 💼 Other
 
