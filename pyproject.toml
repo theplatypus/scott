@@ -1,0 +1,52 @@
+[build-system]
+requires = ["maturin>=1.11,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "scott-trace"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+rdkit = ["rdkit"]
+nx = ["networkx"]
+legacy = []
+dev = [
+    "pytest>=7.4",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+test = "scott.tools:test"
+unit = "scott.tools:unit"
+canonization = "scott.tools:canonization"
+lint = "scott.tools:lint"
+format = "scott.tools:format"
+
+[tool.maturin]
+module-name = "scott._scott"
+python-source = "."
+features = ["python"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["test/pytest"]
+markers = [
+    "unit: fast sanity checks",
+    "canonization: cfi-rigid workloads",
+]
+filterwarnings = [
+    "ignore:.*setParseAction.*:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.format]
+indent-style = "tab"

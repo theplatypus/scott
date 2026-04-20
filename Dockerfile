@@ -1,39 +1,30 @@
-FROM continuumio/anaconda
+FROM python:latest
 
-# RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
-# 	libglib2.0-0 libxext6 libsm6 libxrender1
+# Rust toolchain (needed to build the PyO3 extension)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
-# RUN wget --quiet https://repo.anaconda.com/archive/Anaconda2-5.3.0-Linux-x86_64.sh -O ~/anaconda.sh && \
-# 	/bin/bash ~/anaconda.sh -b -p /opt/conda && \
-# 	rm ~/anaconda.sh && \
-# 	ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
-# 	echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
+# System deps for rdkit
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	libxml2 \
+	&& rm -rf /var/lib/apt/lists/*
 
-# CONDA ENV
+# Python build tools
+RUN pip install --no-cache-dir maturin uv
 
-RUN yes | /opt/conda/bin/conda create -c rdkit -n scott python=3.6 jupyter anaconda rdkit gensim
-
-RUN echo "conda activate scott" >> ~/.bashrc
-ENV PATH /opt/conda/envs/scott/bin:$PATH
-
-# DEB PACKAGES 
-
-RUN apt-get update && apt-get install -y python3-lxml
-
-
-# SCOTT Package 
-# —————————————————————————————————
-
-RUN mkdir /opt/scott && \
-	mkdir /opt/notebooks && \
-	mkdir /home/scott
-
-WORKDIR /opt/scott 
-
+# Scott package
+WORKDIR /opt/scott
 COPY . .
 
-RUN python setup.py install
+# Build the Rust extension and install with all extras
+RUN uv venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
 
-# WORKDIR /home/scott
+RUN uv pip install -e '.[rdkit,dev,nx]'
+RUN maturin develop --release
+
+# Workspace
+RUN mkdir -p /opt/notebooks /home/scott
 
 CMD ["/bin/bash"]

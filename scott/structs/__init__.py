@@ -1,3 +1,5 @@
-__all__ = ['cgraph', 'edge', 'graph', 'node', 'tree']
+"""Retro-compatibility shim: exposes scott.structs.{graph,node,edge}."""
 
-from . import *
+from . import graph, node, edge
+
+__all__ = ["graph", "node", "edge"]
