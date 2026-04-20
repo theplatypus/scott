@@ -1,0 +1,87 @@
+# git-cliff ~ default configuration file
+# https://git-cliff.org/docs/configuration
+#
+# Lines starting with "#" are comments.
+# Configuration options are organized into tables and keys.
+# See documentation for more information on available options.
+
+[changelog]
+# template for the changelog header
+header = """
+# Scott Changelog\n
+
+"""
+
+body = """
+---
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+{% for group, commits in commits | unique(attribute="message") | filter(attribute="merge_commit", value=false) | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**breaking**] {% endif %}\
+            {{ commit.message | split(pat="\n") | first | upper_first }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+# template for the changelog footer
+footer = """
+
+"""
+# remove the leading and trailing s
+trim = true
+# postprocessors
+postprocessors = [
+  # { pattern = '<REPO>', replace = "https://github.com/orhun/git-cliff" }, # replace repository URL
+]
+
+# render body even when there are no releases to process
+# render_always = true
+# output file path
+# output = "test.md"
+
+[git]
+# parse the commits based on https://www.conventionalcommits.org
+conventional_commits = false
+# filter out the commits that are not conventional
+filter_unconventional = false
+# process each line of a commit as an individual commit
+split_commits = false
+
+# regex for preprocessing the commit messages
+commit_preprocessors = [
+  # Replace issue numbers
+  #{ pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))"},
+  # Check spelling of the commit with https://github.com/crate-ci/typos
+  # If the spelling is incorrect, it will be automatically fixed.
+  #{ pattern = '.*', replace_command = 'typos --write-changes -' },
+  # Remove lines that start with "Co-authored-by"
+  { pattern = '^Co-authored-by.*\n?', replace = '' }
+]
+# regex for parsing and grouping commits
+commit_parsers = [
+  # { body = "$^", skip = true },
+  { message = "^\\[feat\\]", group = "<!-- 00 -->🚀 Features" },
+  { message = "^\\[fix\\]|^\\[bug\\]", group = "<!-- 01 -->🐛 Bug Fixes" },
+  { message = "^\\[hotfix\\]", group = "<!-- 02 -->🚑️ Hotfixes" },
+  { message = "^\\[enh\\]", group = "<!-- 03 -->✨ Enhancements" },
+  { message = "^\\[doc\\]", group = "<!-- 04 -->📚 Documentation" },
+  { message = "^\\[perf\\]", group = "<!-- 05 -->⚡ Performance" },
+  { message = "^\\[refacto\\]", group = "<!-- 06 -->♻️  Refactor" },
+  { message = "^\\[style\\]", group = "<!-- 07 -->🎨 Styling" },
+  { message = "^\\[test\\]", group = "<!-- 08 -->🧪 Testing" },
+  { message = "^\\[chore\\]|^\\[ci\\]|^\\[ci/cd\\]", group = "<!-- 09 -->⚙️  Miscellaneous Tasks" },
+  { message = "^\\[security\\]", group = "<!-- 10 -->🛡️ Security" },
+  { message = "^\\[revert\\]|^Revert", group = "<!-- 11 -->◀️  Revert" },
+  { message = ".*", group = "<!-- 12 -->💼 Other" },
+]
+# filter out the commits that are not matched by commit parsers
+filter_commits = false
+# sort the tags topologically
+topo_order = false
+# sort the commits inside sections by oldest/newest order
+sort_commits = "oldest"
